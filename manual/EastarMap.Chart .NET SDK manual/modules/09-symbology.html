@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>⑨ 符号化 — EastarMap.Chart SDK 手册</title>
+<link rel="stylesheet" href="../assets/eastarmap.css">
+</head>
+<body>
+<div class="layout">
+
+  <aside class="sidebar">
+    <div class="brand">EastarMap.Chart SDK<br><small>.NET 二次开发手册 · v2.0.1</small></div>
+    <nav>
+      <div class="grp">总览</div>
+      <a href="../eastarmap-sdk-net-index.html">📇 手册索引 / 快速开始</a>
+      <div class="grp">功能模块</div>
+      <a href="01-env-version.html">① 环境与版本 (Compatibility)</a>
+      <a href="02-data.html">② 数据入库与查询 (Data)</a>
+      <a href="03-display.html">③ 显示配置 (Display)</a>
+      <a href="04-error.html">④ 异常处理 (ErrorHandling)</a>
+      <a href="05-extensibility.html">⑤ 扩展点 (Extensibility)</a>
+      <a href="06-rendering.html">⑥ 渲染 (Rendering)</a>
+      <a href="07-s57.html">⑦ S-57 解析 (S57)</a>
+      <a href="08-security.html">⑧ 安全 (Security)</a>
+      <a href="09-symbology.html" class="active">⑨ 符号化 (Symbology)</a>
+      <div class="grp">配套</div>
+      <a href="10-end-to-end.html">⑩ 端到端完整示例</a>
+    </nav>
+  </aside>
+
+  <main class="main">
+    <div class="crumb"><a href="../eastarmap-sdk-net-index.html">手册索引</a> › ⑨ 符号化</div>
+    <h1>⑨ 符号化（命名空间 <code>EastarMap.Chart.Symbology</code>）</h1>
+
+    <p>本模块提供海图<strong>表达要素</strong>：颜色、画笔/画刷/字体、符号器与符号规则。</p>
+
+    <table>
+      <thead><tr><th>类 / 枚举</th><th>类别</th><th>职责</th><th>源文件</th></tr></thead>
+      <tbody>
+        <tr><td><a href="#color"><code>SdkColor</code></a></td><td>static</td><td>颜色 5 函数（from_rgb/rgba/hex + to_hex/rgba）</td><td rowspan="6"><code>Symbology\Symbology.cs</code><br><code>Symbology\Symbolizer.cs</code></td></tr>
+        <tr><td><a href="#colorval"><code>ColorValue</code></a></td><td>struct</td><td>颜色值（r/g/b/a）</td></tr>
+        <tr><td><a href="#pen"><code>SdkPen</code></a></td><td>IDisposable</td><td>画笔（color/width/style）</td></tr>
+        <tr><td><a href="#brush"><code>SdkBrush</code></a></td><td>IDisposable</td><td>画刷（color/style）</td></tr>
+        <tr><td><a href="#font"><code>SdkFont</code></a></td><td>IDisposable</td><td>字体（family/size/bold/italic）</td></tr>
+        <tr><td><a href="#sym"><code>Symbolizer</code></a> / <a href="#rule"><code>SymbolizerRule</code></a></td><td>IDisposable</td><td>符号器 + 规则（比例尺区间判定/聚合）</td></tr>
+      </tbody>
+    </table>
+
+    <!-- ==================== 公共枚举 ==================== -->
+    <h2 id="enums" class="anchor">公共枚举（PenStyle / BrushStyle / SymbolizerType）</h2>
+    <p>三个公共枚举的值与 native <code>ogc_pen_style_e / ogc_brush_style_e / ogc_symbolizer_type_e</code> 对齐。</p>
+    <table>
+      <thead><tr><th>枚举</th><th>成员</th><th>值</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td><code>PenStyle</code></td><td><code>Solid</code></td><td>0</td><td>画笔实线样式。</td></tr>
+        <tr><td><code>BrushStyle</code></td><td><code>Solid</code></td><td>0</td><td>画刷实填充样式。</td></tr>
+        <tr><td><code>SymbolizerType</code></td><td><code>Line</code></td><td>0</td><td>线符号器类型。</td></tr>
+      </tbody>
+    </table>
+    <p>用法示例：<code>SdkPen.Create().SetStyle(PenStyle.Solid)</code>、<code>Symbolizer.Create(SymbolizerType.Line)</code>。</p>
+
+    <!-- ==================== SdkColor / ColorValue ==================== -->
+    <h2 id="color" class="anchor">SdkColor / ColorValue（颜色静态工厂与值类型）</h2>
+    <p><code>ColorValue</code> 是 <code>ogc_color_t</code> 的公共值类型镜像（r/g/b/a 字节）。<code>SdkColor</code> 封装 5 个往返函数。</p>
+
+    <h3>ColorValue 属性</h3>
+    <table>
+      <thead><tr><th>属性</th><th>类型</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td><code>R / G / B / A</code></td><td>byte</td><td>红/绿/蓝/透明 0-255。</td></tr>
+      </tbody>
+    </table>
+
+    <h3>SdkColor 方法</h3>
+    <div class="member">
+      <div class="sig">public static ColorValue FromRgb(byte r, byte g, byte b)</div>
+      <div class="desc">RGB（alpha=255）。</div>
+    </div>
+    <div class="member">
+      <div class="sig">public static ColorValue FromRgba(byte r, byte g, byte b, byte a)</div>
+      <div class="desc">RGBA。</div>
+    </div>
+    <div class="member">
+      <div class="sig">public static ColorValue FromHex(uint hex)</div>
+      <div class="desc">0xRRGGBB 十六进制。</div>
+    </div>
+    <div class="member">
+      <div class="sig">public static uint ToHex(ColorValue color)</div>
+      <div class="desc">转 0xRRGGBB。</div>
+    </div>
+    <div class="member">
+      <div class="sig">public static (byte R, byte G, byte B, byte A) ToRgba(ColorValue color)</div>
+      <div class="desc">转 RGBA 分量。</div>
+    </div>
+
+    <h3>示例</h3>
+<pre><code><span class="kw">using</span> EastarMap.Chart.Symbology;
+
+<span class="kw">var</span> red    = SdkColor.FromRgb(<span class="num">255</span>, <span class="num">0</span>, <span class="num">0</span>);
+<span class="kw">var</span> orange = SdkColor.FromHex(<span class="num">0xFF8800</span>);
+<span class="kw">var</span> (r, g, b, a) = SdkColor.ToRgba(orange);
+Console.WriteLine($<span class="st">"#{SdkColor.ToHex(orange):X6} = ({r},{g},{b},{a})"</span>);</code></pre>
+
+    <!-- ==================== SdkPen ==================== -->
+    <h2 id="pen" class="anchor">SdkPen（画笔）</h2>
+    <p>封装 <code>ogc_pen_*</code> 8 函数（create/destroy/color/width/style）。<span class="tag idisposable">IDisposable</span></p>
+
+    <div class="member">
+      <div class="sig">public static SdkPen Create()</div>
+      <div class="desc">创建画笔。</div>
+    </div>
+    <div class="member">
+      <div class="sig">public ColorValue Color { get; }</div>
+      <div class="desc">画笔颜色。</div>
+    </div>
+    <div class="member">
+      <div class="sig">public void SetColor(ColorValue color)</div>
+      <div class="desc">设置画笔颜色。</div>
+    </div>
+    <div class="member">
+      <div class="sig">public double Width { get; }</div>
+      <div class="desc">画笔宽度。</div>
+    </div>
+    <div class="member">
+      <div class="sig">public void SetWidth(double width)</div>
+      <div class="desc">设置画笔宽度。</div>
+    </div>
+    <div class="member">
+      <div class="sig">public PenStyle Style { get; }</div>
+      <div class="desc">画笔样式（<code>PenStyle.Solid</code>）。</div>
+    </div>
+    <div class="member">
+      <div class="sig">public void SetStyle(PenStyle style)</div>
+      <div class="desc">设置画笔样式。</div>
+    </div>
+
+    <!-- ==================== SdkBrush ==================== -->
+    <h2 id="brush" class="anchor">SdkBrush（画刷）</h2>
+    <p>封装 <code>ogc_brush_*</code> 6 函数（create/destroy/color/style）。<span class="tag idisposable">IDisposable</span></p>
+
+    <div class="member">
+      <div class="sig">public static SdkBrush Create()</div>
+      <div class="desc">创建画刷。</div>
+    </div>
+    <div class="member">
+      <div class="sig">public ColorValue Color { get; }</div>
+      <div class="desc">画刷颜色。</div>
+    </div>
+    <div class="member">
+      <div class="sig">public void SetColor(ColorValue color)</div>
+      <div class="desc">设置画刷颜色。</div>
+    </div>
+    <div class="member">
+      <div class="sig">public BrushStyle Style { get; }</div>
+      <div class="desc">画刷样式（<code>BrushStyle.Solid</code>）。</div>
+    </div>
+    <div class="member">
+      <div class="sig">public void SetStyle(BrushStyle style)</div>
+      <div class="desc">设置画刷样式。</div>
+    </div>
+
+    <!-- ==================== SdkFont ==================== -->
+    <h2 id="font" class="anchor">SdkFont（字体）</h2>
+    <p>封装 <code>ogc_font_*</code> 8 函数（create/destroy/family/size/bold/italic）。<span class="tag idisposable">IDisposable</span></p>
+
+    <div class="member">
+      <div class="sig">public static SdkFont Create(string family, double size)</div>
+      <div class="desc">创建字体。<code>family</code> 字体族，<code>size</code> 字号。</div>
+    </div>
+    <div class="member">
+      <div class="sig">public string Family { get; }</div>
+      <div class="desc">字体族。</div>
+    </div>
+    <div class="member">
+      <div class="sig">public double Size { get; }</div>
+      <div class="desc">字号。</div>
+    </div>
+    <div class="member">
+      <div class="sig">public bool IsBold { get; }</div>
+      <div class="desc">是否粗体。</div>
+    </div>
+    <div class="member">
+      <div class="sig">public bool IsItalic { get; }</div>
+      <div class="desc">是否斜体。</div>
+    </div>
+    <div class="member">
+      <div class="sig">public void SetBold(bool bold)</div>
+      <div class="desc">设置粗体。</div>
+    </div>
+    <div class="member">
+      <div class="sig">public void SetItalic(bool italic)</div>
+      <div class="desc">设置斜体。</div>
+    </div>
+
+    <h3>示例：画笔/画刷/字体</h3>
+<pre><code><span class="kw">using</span> EastarMap.Chart.Symbology;
+
+<span class="kw">using</span> <span class="kw">var</span> pen   = SdkPen.Create();
+pen.SetColor(SdkColor.FromRgb(<span class="num">0</span>, <span class="num">90</span>, <span class="num">180</span>));
+pen.SetWidth(<span class="num">1.5</span>);
+
+<span class="kw">using</span> <span class="kw">var</span> brush = SdkBrush.Create();
+brush.SetColor(SdkColor.FromHex(<span class="num">0xFFF5E0</span>));
+
+<span class="kw">using</span> <span class="kw">var</span> font  = SdkFont.Create(<span class="st">"Arial"</span>, <span class="num">12</span>);
+font.SetBold(<span class="kw">true</span>);
+Console.WriteLine($<span class="st">"{font.Family} {font.Size}pt bold={font.IsBold}"</span>);</code></pre>
+
+    <!-- ==================== Symbolizer / SymbolizerRule ==================== -->
+    <h2 id="sym" class="anchor">Symbolizer（符号器）</h2>
+    <p>封装 <code>ogc_symbolizer_*</code>（create/destroy/type/style/symbolize）。<span class="tag idisposable">IDisposable</span></p>
+
+    <div class="member">
+      <div class="sig">public static Symbolizer Create(SymbolizerType type = SymbolizerType.Line)</div>
+      <div class="desc">创建符号器。</div>
+    </div>
+    <div class="member">
+      <div class="sig">public SymbolizerType Type { get; }</div>
+      <div class="desc">类型回读。</div>
+    </div>
+    <div class="member">
+      <div class="sig">public void SetStyle(void* style)</div>
+      <div class="desc">绑定绘制样式（draw_style 句柄指针直传）。</div>
+    </div>
+    <div class="member">
+      <div class="sig">public int Symbolize(void* feature, void* device)</div>
+      <div class="desc">符号化到绘制设备（返回 0 成功）。</div>
+    </div>
+
+    <h2 id="rule" class="anchor">SymbolizerRule（符号规则）</h2>
+    <p>名称/比例尺区间 min/max + <code>is_applicable</code> 区间判定 + 符号器聚合。<span class="tag idisposable">IDisposable</span></p>
+
+    <div class="member">
+      <div class="sig">public static SymbolizerRule Create()</div>
+      <div class="desc">创建规则。</div>
+    </div>
+    <div class="member">
+      <div class="sig">public string Name { get; set; }</div>
+      <div class="desc">规则名（往返 UTF-8）。</div>
+    </div>
+    <div class="member">
+      <div class="sig">public double MinScale { get; set; }</div>
+      <div class="desc">比例尺下限。</div>
+    </div>
+    <div class="member">
+      <div class="sig">public double MaxScale { get; set; }</div>
+      <div class="desc">比例尺上限。</div>
+    </div>
+    <div class="member">
+      <div class="sig">public void SetScaleRange(double minScale, double maxScale)</div>
+      <div class="desc">一次设置区间。</div>
+    </div>
+    <div class="member">
+      <div class="sig">public bool IsApplicable(void* feature, double scale)</div>
+      <div class="desc">区间判定（<code>IsScaleInRange &amp;&amp; Evaluate</code>；无 filter 时恒真）。</div>
+    </div>
+    <div class="member">
+      <div class="sig">public void AddSymbolizer(Symbolizer symbolizer)</div>
+      <div class="desc">附加符号器。</div>
+    </div>
+    <div class="member">
+      <div class="sig">public IntPtr GetSymbolizer(int index)</div>
+      <div class="desc">按序取符号器（越界返 NULL）。</div>
+    </div>
+
+    <h3>示例：规则 + 符号器聚合</h3>
+<pre><code><span class="kw">using</span> EastarMap.Chart.Symbology;
+
+<span class="kw">using</span> <span class="kw">var</span> sym = Symbolizer.Create();
+<span class="kw">using</span> <span class="kw">var</span> rule = SymbolizerRule.Create();
+rule.Name = <span class="st">"航线显示"</span>;
+rule.SetScaleRange(minScale: <span class="num">1000</span>, maxScale: <span class="num">100000</span>);
+rule.AddSymbolizer(sym);                 <span class="cm">// 聚合符号器</span>
+
+<span class="kw">if</span> (rule.IsApplicable(featurePtr, scale: <span class="num">50000</span>))
+    sym.Symbolize(featurePtr, devicePtr);   <span class="cm">// 命中区间 → 符号化</span></code></pre>
+
+    <div class="callout info">
+      <span class="tt">典型用途</span>
+      自定义航线/航点表达样式（颜色/线宽/字体），或按比例尺区间切换不同符号。进阶场景常与 ⑥ 渲染模块联动。
+    </div>
+
+    <div class="footer">⑨ 符号化 · 返回 <a href="../eastarmap-sdk-net-index.html">手册索引</a></div>
+  </main>
+</div>
+</body>
+</html>

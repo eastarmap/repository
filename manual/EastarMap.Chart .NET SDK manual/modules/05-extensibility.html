@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>⑤ 扩展点 — EastarMap.Chart SDK 手册</title>
+<link rel="stylesheet" href="../assets/eastarmap.css">
+</head>
+<body>
+<div class="layout">
+
+  <aside class="sidebar">
+    <div class="brand">EastarMap.Chart SDK<br><small>.NET 二次开发手册 · v2.0.1</small></div>
+    <nav>
+      <div class="grp">总览</div>
+      <a href="../eastarmap-sdk-net-index.html">📇 手册索引 / 快速开始</a>
+      <div class="grp">功能模块</div>
+      <a href="01-env-version.html">① 环境与版本 (Compatibility)</a>
+      <a href="02-data.html">② 数据入库与查询 (Data)</a>
+      <a href="03-display.html">③ 显示配置 (Display)</a>
+      <a href="04-error.html">④ 异常处理 (ErrorHandling)</a>
+      <a href="05-extensibility.html" class="active">⑤ 扩展点 (Extensibility)</a>
+      <a href="06-rendering.html">⑥ 渲染 (Rendering)</a>
+      <a href="07-s57.html">⑦ S-57 解析 (S57)</a>
+      <a href="08-security.html">⑧ 安全 (Security)</a>
+      <a href="09-symbology.html">⑨ 符号化 (Symbology)</a>
+      <div class="grp">配套</div>
+      <a href="10-end-to-end.html">⑩ 端到端完整示例</a>
+    </nav>
+  </aside>
+
+  <main class="main">
+    <div class="crumb"><a href="../eastarmap-sdk-net-index.html">手册索引</a> › ⑤ 扩展点</div>
+    <h1>⑤ 扩展点（命名空间 <code>EastarMap.Chart.Extensibility</code>）</h1>
+
+    <p>本模块是 SDK 面向宿主应用的<strong>挂接点</strong>：日志接收（把 native 日志转发到宿主管线）与 JSON 序列化（编解码扩展）。默认均有开箱即用的实现。</p>
+
+    <table>
+      <thead><tr><th>成员</th><th>类别</th><th>职责</th><th>源文件</th></tr></thead>
+      <tbody>
+        <tr><td><a href="#loglevel"><code>SdkLogLevel</code></a></td><td>enum</td><td>日志级别（0=TRACE..5=FATAL）</td><td rowspan="6"><code>Extensibility\SdkExtensibility.cs</code></td></tr>
+        <tr><td><a href="#logsink"><code>ISdkLogSink</code></a></td><td>interface</td><td>日志扩展点</td></tr>
+        <tr><td><a href="#tracelog"><code>TraceLogSink</code></a></td><td>class</td><td>System.Diagnostics.Trace 落点（默认）</td></tr>
+        <tr><td><a href="#sdklog"><code>SdkLog</code></a></td><td>static</td><td>native 日志器控制（console/level）</td></tr>
+        <tr><td><a href="#jsonser"><code>ISdkJsonSerializer</code></a></td><td>interface</td><td>JSON 序列化扩展点</td></tr>
+        <tr><td><a href="#stj"><code>StjJsonSerializer</code></a></td><td>class</td><td>System.Text.Json 实现（默认）</td></tr>
+      </tbody>
+    </table>
+
+    <!-- ==================== SdkLogLevel ==================== -->
+    <h2 id="loglevel" class="anchor">SdkLogLevel（日志级别枚举）</h2>
+    <p>与 native logger 对齐（sdk_c_api.h:128）：<code>0=TRACE..5=FATAL</code>。</p>
+    <table>
+      <thead><tr><th>成员</th><th>值</th></tr></thead>
+      <tbody>
+        <tr><td><code>Trace</code></td><td>0</td></tr>
+        <tr><td><code>Debug</code></td><td>1</td></tr>
+        <tr><td><code>Info</code></td><td>2</td></tr>
+        <tr><td><code>Warning</code></td><td>3</td></tr>
+        <tr><td><code>Error</code></td><td>4</td></tr>
+        <tr><td><code>Fatal</code></td><td>5</td></tr>
+      </tbody>
+    </table>
+
+    <!-- ==================== ISdkLogSink / TraceLogSink ==================== -->
+    <h2 id="logsink" class="anchor">ISdkLogSink / TraceLogSink（日志扩展点）</h2>
+    <div class="member">
+      <div class="sig">public interface ISdkLogSink { void Log(SdkLogLevel level, string message); }</div>
+      <div class="desc">L2 门面把 native 日志事件转发到宿主管线的扩展点。</div>
+    </div>
+    <div class="member">
+      <div class="sig">public sealed class TraceLogSink : ISdkLogSink</div>
+      <div class="desc">System.Diagnostics.Trace 落点（默认接插件）。<code>TraceLogSink.Instance</code> 单例；输出格式 <code>[ogc:{level}] {message}</code>。</div>
+    </div>
+
+    <!-- ==================== SdkLog ==================== -->
+    <h2 id="sdklog" class="anchor">SdkLog（native 日志器控制）</h2>
+    <p>把 native console/level 开关暴露给宿主。典型用途：基准与演示默认把 console 输出关到 ERROR，避免每帧 30+ 行 native 日志污染测量与录制。</p>
+
+    <div class="member">
+      <div class="sig">public static bool ConsoleOutputEnabled { set; }</div>
+      <div class="desc">控制台输出开关（对应 <code>ogc_logger_set_console_output</code>）。logger 实例为空时确定性抛 <code>ChartSdkException</code>。</div>
+    </div>
+    <div class="member">
+      <div class="sig">public static SdkLogLevel MinimumLevel { set; }</div>
+      <div class="desc">最低输出级别（对应 <code>ogc_logger_set_level</code>；数值与 native 0=TRACE..5=FATAL 一致）。</div>
+    </div>
+
+    <h3>示例：关闭 native 控制台日志</h3>
+<pre><code><span class="kw">using</span> EastarMap.Chart.Extensibility;
+
+<span class="cm">// 关闭 native 控制台输出（避免日志污染）</span>
+SdkLog.ConsoleOutputEnabled = <span class="kw">false</span>;
+
+<span class="cm">// 只输出 ERROR 及以上级别</span>
+SdkLog.MinimumLevel = SdkLogLevel.Error;
+
+<span class="cm">// 自定义日志接收器</span>
+<span class="kw">sealed class</span> <span class="ty">MySink</span> : <span class="ty">ISdkLogSink</span>
+{
+    <span class="kw">public void</span> <span class="fn">Log</span>(<span class="ty">SdkLogLevel</span> level, <span class="kw">string</span> message)
+        => File.AppendAllText(<span class="st">"sdk.log"</span>, $<span class="st">"[{level}] {message}"</span> + Environment.NewLine);
+}
+<span class="kw">var</span> sink = <span class="kw">new</span> <span class="ty">MySink</span>();  <span class="cm">// 通过 DI/手动挂接到 L2 门面</span></code></pre>
+
+    <!-- ==================== ISdkJsonSerializer / StjJsonSerializer ==================== -->
+    <h2 id="jsonser" class="anchor">ISdkJsonSerializer / StjJsonSerializer（JSON 序列化扩展点）</h2>
+    <div class="member">
+      <div class="sig">public interface ISdkJsonSerializer { string Serialize&lt;T&gt;(T value); T? Deserialize&lt;T&gt;(string json); }</div>
+      <div class="desc">attr_json / result 元数据的编解码契约。</div>
+    </div>
+    <div class="member">
+      <div class="sig">public sealed class StjJsonSerializer : ISdkJsonSerializer</div>
+      <div class="desc">System.Text.Json 实现（默认接插件）。</div>
+    </div>
+    <div class="member">
+      <div class="sig">public StjJsonSerializer(JsonSerializerOptions? options = null)</div>
+      <div class="desc">构造（默认 <code>JsonSerializerDefaults.Web</code>）。</div>
+    </div>
+    <div class="member">
+      <div class="sig">public JsonSerializerOptions Options { get; }</div>
+      <div class="desc">实际使用的序列化选项。</div>
+    </div>
+    <div class="member">
+      <div class="sig">public static StjJsonSerializer Instance { get; }</div>
+      <div class="desc">默认单例（<code>JsonSerializerDefaults.Web</code>）。</div>
+    </div>
+
+    <h3>示例</h3>
+<pre><code><span class="kw">using</span> EastarMap.Chart.Extensibility;
+
+<span class="kw">var</span> ser = <span class="kw">new</span> <span class="ty">StjJsonSerializer</span>();
+<span class="kw">var</span> json = ser.Serialize(<span class="kw">new</span> { a = <span class="num">1</span>, b = <span class="st">"x"</span> });
+<span class="kw">var</span> obj  = ser.Deserialize&lt;Dictionary&lt;<span class="kw">string</span>, <span class="kw">object</span>&gt;&gt;(json);</code></pre>
+
+    <div class="callout info">
+      <span class="tt">典型用途</span>
+      关闭 native 每帧日志以稳定性能测量、接入宿主的日志系统（NLog/Serilog）、自定义属性 JSON 编解码策略。
+    </div>
+
+    <div class="footer">⑤ 扩展点 · 返回 <a href="../eastarmap-sdk-net-index.html">手册索引</a></div>
+  </main>
+</div>
+</body>
+</html>

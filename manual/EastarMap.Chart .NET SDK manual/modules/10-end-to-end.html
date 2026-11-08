@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>⑩ 端到端完整示例 — EastarMap.Chart SDK 手册</title>
+<link rel="stylesheet" href="../assets/eastarmap.css">
+</head>
+<body>
+<div class="layout">
+
+  <aside class="sidebar">
+    <div class="brand">EastarMap.Chart SDK<br><small>.NET 二次开发手册 · v2.0.1</small></div>
+    <nav>
+      <div class="grp">总览</div>
+      <a href="../eastarmap-sdk-net-index.html">📇 手册索引 / 快速开始</a>
+      <div class="grp">功能模块</div>
+      <a href="01-env-version.html">① 环境与版本 (Compatibility)</a>
+      <a href="02-data.html">② 数据入库与查询 (Data)</a>
+      <a href="03-display.html">③ 显示配置 (Display)</a>
+      <a href="04-error.html">④ 异常处理 (ErrorHandling)</a>
+      <a href="05-extensibility.html">⑤ 扩展点 (Extensibility)</a>
+      <a href="06-rendering.html">⑥ 渲染 (Rendering)</a>
+      <a href="07-s57.html">⑦ S-57 解析 (S57)</a>
+      <a href="08-security.html">⑧ 安全 (Security)</a>
+      <a href="09-symbology.html">⑨ 符号化 (Symbology)</a>
+      <div class="grp">配套</div>
+      <a href="10-end-to-end.html" class="active">⑩ 端到端完整示例</a>
+    </nav>
+  </aside>
+
+  <main class="main">
+    <div class="crumb"><a href="../eastarmap-sdk-net-index.html">手册索引</a> › ⑩ 端到端完整示例</div>
+    <h1>⑩ 端到端完整示例</h1>
+
+    <p>本页给出一个串联全部模块的<strong>可运行示例</strong>（脱胎于 <code>samples\EastarMap.Chart.ConsoleSmoke\Program.cs</code>）：
+    解析 → dump → 查询 → EDB → 渲染 → 导出 PNG。用于完整理解各模块的配合方式。</p>
+
+    <h2>流程概览</h2>
+    <table>
+      <thead><tr><th style="width:80px">步骤</th><th>模块</th><th>作用</th></tr></thead>
+      <tbody>
+        <tr><td>0</td><td>① 环境与版本</td><td>版本握手 + native 根目录解析</td></tr>
+        <tr><td>1</td><td>⑦ S-57 解析</td><td>打开并解析样例图幅</td></tr>
+        <tr><td>2</td><td>② 数据</td><td>dump 转 SQLite + 查询</td></tr>
+        <tr><td>3</td><td>② 数据（EDB）</td><td>用户航线库落库 + 归一</td></tr>
+        <tr><td>4</td><td>⑥ 渲染</td><td>引擎创建 + 渲染图幅</td></tr>
+        <tr><td>5</td><td>⑥ 渲染</td><td>像素导出 PNG</td></tr>
+      </tbody>
+    </table>
+
+    <h2>完整代码</h2>
+<pre><code><span class="kw">using</span> System;
+<span class="kw">using</span> System.IO;
+<span class="kw">using</span> System.Linq;
+<span class="kw">using</span> System.Text;
+<span class="kw">using</span> EastarMap.Chart.Compatibility;
+<span class="kw">using</span> EastarMap.Chart.Data;
+<span class="kw">using</span> EastarMap.Chart.Rendering;
+<span class="kw">using</span> EastarMap.Chart.S57;
+
+<span class="kw">const string</span> Chart = <span class="st">@"E:\CN422111.000"</span>;
+
+<span class="kw">var</span> root   = EastarMapEnvironment.AppRoot;        <span class="cm">// ① native 根</span>
+<span class="kw">var</span> work   = Path.Combine(Path.GetTempPath(), <span class="st">"eastarmap-e2e"</span>);
+Directory.CreateDirectory(work);
+<span class="kw">var</span> sqlite = Path.Combine(work, <span class="st">"e2e.sqlite"</span>);
+<span class="kw">var</span> edb    = Path.Combine(work, <span class="st">"e2e.edb"</span>);
+<span class="kw">var</span> png    = Path.Combine(work, <span class="st">"out.png"</span>);
+
+<span class="cm">// ---- 0. 版本握手 ----</span>
+Console.WriteLine($<span class="st">"版本 {SdkVersion.Version}（{SdkVersion.BuildDate}），握 {SdkVersion.VersionMatchesParts}"</span>);
+
+<span class="cm">// ---- 1. S-57 解析（⑦）----</span>
+<span class="kw">using</span> (<span class="kw">var</span> parser = S57Parser.Create())
+{
+    parser.Open(Chart);
+    <span class="kw">var</span> h = parser.Parse();
+    Console.WriteLine($<span class="st">"解析句柄 {h}"</span>);
+}
+
+<span class="cm">// ---- 2. dump → sqlite + 查询（②）----</span>
+<span class="kw">var</span> report = ChartDump.Execute(<span class="kw">new</span> DumpOptions {
+    Mode = <span class="st">"dump"</span>, SqlitePath = sqlite, Inputs = <span class="kw">new</span>[] { Chart },
+    Overwrite = <span class="kw">true</span>, CreateSpatialIndex = <span class="kw">true</span>, BatchSize = 100,
+});
+Console.WriteLine($<span class="st">"入库要素 {report.FeaturesInserted} 行"</span>);
+
+<span class="kw">var</span> cells = FeatureQuery.ListCells(sqlite);
+<span class="kw">var</span> cell  = cells.First();
+<span class="kw">var</span> meta  = FeatureQuery.InspectCell(sqlite, cell);
+Console.WriteLine($<span class="st">"数据集 {meta.CellId} 范围 lon[{meta.MinLon},{meta.MaxLon}] lat[{meta.MinLat},{meta.MaxLat}]"</span>);
+
+<span class="kw">var</span> page = FeatureQuery.QueryFeatures(sqlite, cell, <span class="kw">new</span> FeatureQueryFilter { Limit = <span class="num">5</span> });
+Console.WriteLine($<span class="st">"首页要素 {page.Count}，总数 {FeatureQuery.CountFeatures(sqlite, cell)}"</span>);
+
+<span class="cm">// ---- 3. EDB 用户航线库（②）----</span>
+<span class="kw">using</span> (<span class="kw">var</span> db = UserRouteDatabase.Open(edb))
+{
+    db.EnsureSchema();
+    db.FeatureUpsert(<span class="st">"user_waypoint"</span>, <span class="st">"wp-001"</span>, <span class="st">"POINT(122.51 31.22)"</span>,
+        <span class="st">"{\"objectClass\":\"DEPARE\",\"名称\":\"航路点A\"}"</span>);
+}
+<span class="kw">using</span> (<span class="kw">var</span> db = UserRouteDatabase.Open(edb))
+{
+    <span class="kw">var</span> f = FeatureQuery.Normalize(db.FeatureGet(<span class="st">"user_waypoint"</span>, <span class="st">"wp-001"</span>)!);
+    Console.WriteLine($<span class="st">"EDB {f.ObjectClass} 名称={f.GetAttribute("名称")}"</span>);
+}
+
+<span class="cm">// ---- 4. 渲染引擎（⑥）----</span>
+<span class="kw">using</span> <span class="kw">var</span> engine = PortrayalEngine.Create(<span class="kw">new</span> PortrayalEngineOptions {
+    S52RootPath = root,
+    LicenseFilePath = File.Exists(Path.Combine(root, <span class="st">"config"</span>, <span class="st">"license.lic"</span>))
+        ? Path.Combine(root, <span class="st">"config"</span>, <span class="st">"license.lic"</span>) : <span class="kw">null</span>,
+});
+<span class="kw">var</span> output = engine.Render(Chart, <span class="kw">new</span> PortrayalRenderOptions {
+    Width = <span class="num">1024</span>, Height = <span class="num">1024</span>, ColorPalette = <span class="num">0</span>, DisplayCategory = <span class="num">1</span>, SafetyContour = <span class="num">30</span>,
+});
+<span class="kw">if</span> (output.Status != <span class="num">0</span>) Console.WriteLine(<span class="st">"渲染失败："</span> + output.Diagnostic);
+<span class="kw">else</span> Console.WriteLine($<span class="st">"渲染 {output.Width}x{output.Height}，像素 {output.Pixels.Length} 字节"</span>);
+
+<span class="cm">// ---- 5. 导出 PNG（自包含 BGRA→PNG）----</span>
+WriteBgra32(png, output.Pixels, output.Width, output.Height);
+Console.WriteLine($<span class="st">"已导出 {png}（{new FileInfo(png).Length} 字节）"</span>);
+
+<span class="cm">// ---- 简易 BGRA8888 → PNG 写盘（示例省略详细位图编码）----</span>
+<span class="kw">static void</span> <span class="fn">WriteBgra32</span>(<span class="kw">string</span> path, <span class="kw">byte</span>[] bgra, <span class="kw">int</span> w, <span class="kw">int</span> h) { <span class="cm">/* 生产用图像库或参照 ConsoleSmoke\PngWriter.cs */</span> }</code></pre>
+
+    <div class="callout warn">
+      <span class="tt">代码说明</span>
+      上例 <code>WriteBgra32</code> 为演示占位；真实代码中：
+      <ul>
+        <li>S-57 解析命名空间为 <code>EastarMap.Chart.S57</code>（<code>S57Parser</code>）。</li>
+        <li>PNG 编码请用图像库，或直接参照 <code>samples\EastarMap.Chart.ConsoleSmoke\PngWriter.cs</code> 的自包含编码器。</li>
+      </ul>
+    </div>
+
+    <h2>生产级建议</h2>
+    <ul>
+      <li><strong>线程串行化</strong>：native 调用非线程安全时，用 <code>SemaphoreSlim</code> 串行化（见 <code>samples\...\Demo.Wpf\Services\RenderService.cs</code> 的 <code>_gate</code>）。</li>
+      <li><strong>句柄释放</strong>：所有 <code>using</code> 门面类，勿手动 free 由门面持有的 native 指针（如 S57Parser 的 parse 结果）。</li>
+      <li><strong>异步封装</strong>：长时间操作（dump/渲染）用 <code>Task.Run</code> + 进度回调/取消。</li>
+      <li><strong>授权切换</strong>：引擎可在创建时选 <code>LicenseFilePath</code> 或 <code>CredentialName</code>，支持运行时按授权等级渲染。</li>
+    </ul>
+
+    <h2>配套源码参考</h2>
+    <ul>
+      <li><code>samples\EastarMap.Chart.ConsoleSmoke\Program.cs</code> — 全链路冒烟（L0/L1/集成各段）。</li>
+      <li><code>samples\EastarMap.Chart.Demo.Wpf\Services\RenderService.cs</code> — 引擎生命周期 + 线程串行化。</li>
+      <li><code>samples\EastarMap.Chart.Demo.Wpf\ViewModels\MainViewModel.cs</code> — 渲染/分页/导出的 WPF 视图模型。</li>
+      <li><code>tests\EastarMap.Chart.Tests\**</code> — 各模块单元测试，可作为「契约断言」的参考。</li>
+    </ul>
+
+    <div class="footer">⑩ 端到端完整示例 · 返回 <a href="../eastarmap-sdk-net-index.html">手册索引</a></div>
+  </main>
+</div>
+</body>
+</html>

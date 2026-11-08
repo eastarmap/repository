@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>③ 显示配置 — EastarMap.Chart SDK 手册</title>
+<link rel="stylesheet" href="../assets/eastarmap.css">
+</head>
+<body>
+<div class="layout">
+
+  <aside class="sidebar">
+    <div class="brand">EastarMap.Chart SDK<br><small>.NET 二次开发手册 · v2.0.1</small></div>
+    <nav>
+      <div class="grp">总览</div>
+      <a href="../eastarmap-sdk-net-index.html">📇 手册索引 / 快速开始</a>
+      <div class="grp">功能模块</div>
+      <a href="01-env-version.html">① 环境与版本 (Compatibility)</a>
+      <a href="02-data.html">② 数据入库与查询 (Data)</a>
+      <a href="03-display.html" class="active">③ 显示配置 (Display)</a>
+      <a href="04-error.html">④ 异常处理 (ErrorHandling)</a>
+      <a href="05-extensibility.html">⑤ 扩展点 (Extensibility)</a>
+      <a href="06-rendering.html">⑥ 渲染 (Rendering)</a>
+      <a href="07-s57.html">⑦ S-57 解析 (S57)</a>
+      <a href="08-security.html">⑧ 安全 (Security)</a>
+      <a href="09-symbology.html">⑨ 符号化 (Symbology)</a>
+      <div class="grp">配套</div>
+      <a href="10-end-to-end.html">⑩ 端到端完整示例</a>
+    </nav>
+  </aside>
+
+  <main class="main">
+    <div class="crumb"><a href="../eastarmap-sdk-net-index.html">手册索引</a> › ③ 显示配置</div>
+    <h1>③ 显示配置（命名空间 <code>EastarMap.Chart.Display</code>）</h1>
+
+    <p>本模块提供海图<strong>显示设置</strong>的载体（DisplayMode / Dpi / ShowGrid）读写。<code>ChartConfig</code> 封装 <code>ogc_chart_config_*</code> 8 个函数。</p>
+
+    <table>
+      <thead><tr><th>类</th><th>类别</th><th>职责</th><th>源文件</th></tr></thead>
+      <tbody>
+        <tr><td><a href="#chartconfig"><code>ChartConfig</code></a></td><td>IDisposable</td><td>显示配置创建与读写</td><td><code>Display\ChartConfig.cs</code></td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout info">
+      <span class="tt">关于「载体一致」</span>
+      native 侧目前无渲染消费方（<code>sdk_c_api_graph.cpp:1229-1237</code> 实测），本门面只保证数据载体在 native 往返一致；真正的显示类别/等深线等渲染参数在 ⑥ 渲染模块的 <code>PortrayalRenderOptions</code> 中设置。
+    </div>
+
+    <!-- ==================== ChartConfig ==================== -->
+    <h2 id="chartconfig" class="anchor">ChartConfig（显示配置门面）</h2>
+    <p>句柄生命周期由 <code>SafeChartConfigHandle</code> 托管（释放 = <code>ogc_chart_config_destroy</code> 配对）。<span class="tag idisposable">IDisposable</span></p>
+
+    <h3>静态方法</h3>
+    <div class="member">
+      <div class="sig">public static ChartConfig Create()</div>
+      <div class="desc">创建显示配置（默认值由 native 决定）。返回 NULL 时抛 <code>ChartSdkException</code>。</div>
+    </div>
+
+    <h3>属性（可读写往返）</h3>
+    <div class="member">
+      <div class="sig">public int DisplayMode { get; set; }</div>
+      <div class="desc">显示模式（基 IMO/Simplified/Other 载体值）。</div>
+    </div>
+    <div class="member">
+      <div class="sig">public double Dpi { get; set; }</div>
+      <div class="desc">DPI。</div>
+    </div>
+    <div class="member">
+      <div class="sig">public bool ShowGrid { get; set; }</div>
+      <div class="desc">网格显示开关（读 = <code>get_show_grid() != 0</code>；写 = 1/0）。</div>
+    </div>
+
+    <h3>示例</h3>
+<pre><code><span class="kw">using</span> EastarMap.Chart.Display;
+
+<span class="kw">using</span> <span class="kw">var</span> cfg = ChartConfig.Create();
+cfg.DisplayMode = 0;           <span class="cm">// 0=IMO, 1=Simplified, 2=Other（按需传值）</span>
+cfg.Dpi         = 96.0;
+cfg.ShowGrid    = <span class="kw">true</span>;
+
+Console.WriteLine($<span class="st">"DisplayMode={cfg.DisplayMode} Dpi={cfg.Dpi} ShowGrid={cfg.ShowGrid}"</span>);</code></pre>
+
+    <div class="callout warn">
+      <span class="tt">注意</span>
+      上面的 <code>DisplayMode = 0</code> 为示例；实际传 int 值（0/1/2）。所有 setter 直接转发 native，不做枚举校验。
+    </div>
+
+    <div class="footer">③ 显示配置 · 返回 <a href="../eastarmap-sdk-net-index.html">手册索引</a></div>
+  </main>
+</div>
+</body>
+</html>

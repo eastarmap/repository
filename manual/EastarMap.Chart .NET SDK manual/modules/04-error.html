@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>④ 异常处理 — EastarMap.Chart SDK 手册</title>
+<link rel="stylesheet" href="../assets/eastarmap.css">
+</head>
+<body>
+<div class="layout">
+
+  <aside class="sidebar">
+    <div class="brand">EastarMap.Chart SDK<br><small>.NET 二次开发手册 · v2.0.1</small></div>
+    <nav>
+      <div class="grp">总览</div>
+      <a href="../eastarmap-sdk-net-index.html">📇 手册索引 / 快速开始</a>
+      <div class="grp">功能模块</div>
+      <a href="01-env-version.html">① 环境与版本 (Compatibility)</a>
+      <a href="02-data.html">② 数据入库与查询 (Data)</a>
+      <a href="03-display.html">③ 显示配置 (Display)</a>
+      <a href="04-error.html" class="active">④ 异常处理 (ErrorHandling)</a>
+      <a href="05-extensibility.html">⑤ 扩展点 (Extensibility)</a>
+      <a href="06-rendering.html">⑥ 渲染 (Rendering)</a>
+      <a href="07-s57.html">⑦ S-57 解析 (S57)</a>
+      <a href="08-security.html">⑧ 安全 (Security)</a>
+      <a href="09-symbology.html">⑨ 符号化 (Symbology)</a>
+      <div class="grp">配套</div>
+      <a href="10-end-to-end.html">⑩ 端到端完整示例</a>
+    </nav>
+  </aside>
+
+  <main class="main">
+    <div class="crumb"><a href="../eastarmap-sdk-net-index.html">手册索引</a> › ④ 异常处理</div>
+    <h1>④ 异常处理（命名空间 <code>EastarMap.Chart.ErrorHandling</code>）</h1>
+
+    <p>本模块统一管理 native 错误码到托管异常的映射，是所有 L2 门面的<strong>错误出口</strong>。二次开发用 <code>try/catch</code> 捕获 <code>ChartSdkException</code> 即可拿到错误码与消息。</p>
+
+    <table>
+      <thead><tr><th>类</th><th>类别</th><th>职责</th><th>源文件</th></tr></thead>
+      <tbody>
+        <tr><td><a href="#exc"><code>ChartSdkException</code></a></td><td>Exception</td><td>SDK 异常（code/module/message）</td><td><code>ErrorHandling\ChartSdkException.cs</code></td></tr>
+        <tr><td><a href="#nativeerror"><code>NativeError</code></a></td><td>static</td><td>错误码→异常映射</td><td><code>ErrorHandling\NativeError.cs</code></td></tr>
+        <tr><td><a href="#code"><code>OgcErrorCode</code></a></td><td>enum</td><td>基础错误码实名（0 / -1..-11）</td><td><code>ErrorHandling\OgcErrorCode.cs</code></td></tr>
+      </tbody>
+    </table>
+
+    <!-- ==================== ChartSdkException ==================== -->
+    <h2 id="exc" class="anchor">ChartSdkException（SDK 异常）</h2>
+    <p>承载 native 错误码实名 + <code>ogc_error_get_message</code> 文本。<code>Message</code> 格式：<code>"[code] message"</code>。</p>
+
+    <h3>构造与成员</h3>
+    <div class="member">
+      <div class="sig">public ChartSdkException(int code, string message, int module = 0)</div>
+      <div class="desc">构造异常。<code>module</code> 为错误模块实名（portrayal 域用 <code>OgcPortrayalErrorModule</code>；基础域为 0）。</div>
+    </div>
+    <div class="member">
+      <div class="sig">public int Code { get; }</div>
+      <div class="desc">native 错误码（原始 int，与 <code>ogc_error_code_e</code>/<code>ogc_portrayal_error_e</code> 数值一致）。</div>
+    </div>
+    <div class="member">
+      <div class="sig">public int Module { get; }</div>
+      <div class="desc">错误模块实名。</div>
+    </div>
+
+    <h3>示例：捕获并解读错误</h3>
+<pre><code><span class="kw">using</span> EastarMap.Chart.ErrorHandling;
+
+<span class="kw">try</span>
+{
+    <span class="cm">// 任意 L2 调用（此处以 S57Parser 打开不存在文件为例）</span>
+    <span class="kw">using</span> <span class="kw">var</span> parser = S57Parser.Create();
+    parser.Open(<span class="st">@"C:\no-such.000"</span>);
+}
+<span class="kw">catch</span> (ChartSdkException ex)
+{
+    Console.WriteLine($<span class="st">"错误码 {ex.Code}（OGC_ERROR = {(OgcErrorCode)ex.Code}）：{ex.Message}"</span>);
+    <span class="cm">// 按错误码做分支处理</span>
+    <span class="kw">if</span> ((OgcErrorCode)ex.Code == OgcErrorCode.OGC_ERROR_NOT_FOUND) { <span class="cm">/* 文件未找到 */</span> }
+}</code></pre>
+
+    <!-- ==================== NativeError ==================== -->
+    <h2 id="nativeerror" class="anchor">NativeError（错误码→异常映射）</h2>
+
+    <div class="member">
+      <div class="sig">public static string Describe(int code)</div>
+      <div class="desc">经 <code>ogc_error_get_message</code> 取 native 消息文本（静态存储，不 free）；未登记错误码返回 <code>"未登记错误码 {code}"</code>。</div>
+    </div>
+    <div class="member">
+      <div class="sig">public static void EnsureSuccess(int code)</div>
+      <div class="desc">断言成功（0），否则抛 <code>ChartSdkException(code, Describe(code))</code>。用于基础域错误。</div>
+    </div>
+    <div class="member">
+      <div class="sig">public static void EnsurePortrayalSuccess(int code, int module)</div>
+      <div class="desc">portrayal 域断言（负码 + 模块实名），抛 <code>ChartSdkException(code, Describe(code), module)</code>。</div>
+    </div>
+
+    <h3>示例：包装 native 返回码</h3>
+<pre><code><span class="kw">using</span> EastarMap.Chart.ErrorHandling;
+
+<span class="cm">// 典型门面内部用法：非 0 抛异常</span>
+<span class="kw">int</span> rc = NativeFunctionCall();
+NativeError.EnsureSuccess(rc);   <span class="cm">// rc != 0 时抛 ChartSdkException</span>
+
+<span class="cm">// 直接取描述文本</span>
+Console.WriteLine(NativeError.Describe((<span class="kw">int</span>)OgcErrorCode.OGC_ERROR_INVALID_PARAM));</code></pre>
+
+    <!-- ==================== OgcErrorCode ==================== -->
+    <h2 id="code" class="anchor">OgcErrorCode（基础错误码实名枚举）</h2>
+    <p>镜像 <code>ogc_error_code_e</code>（sdk_c_api.h 12 值：0 + -1..-11）。P/Invoke 层以 <code>int</code> 承载（ABI 等价），本枚举为 L2 类型化门面。</p>
+
+    <table>
+      <thead><tr><th>成员</th><th>值</th><th>含义</th></tr></thead>
+      <tbody>
+        <tr><td><code>OGC_OK</code></td><td>0</td><td>成功。</td></tr>
+        <tr><td><code>OGC_ERROR_INVALID_PARAM</code></td><td>-1</td><td>非法参数。</td></tr>
+        <tr><td><code>OGC_ERROR_NULL_POINTER</code></td><td>-2</td><td>空指针。</td></tr>
+        <tr><td><code>OGC_ERROR_OUT_OF_MEMORY</code></td><td>-3</td><td>内存不足。</td></tr>
+        <tr><td><code>OGC_ERROR_NOT_FOUND</code></td><td>-4</td><td>未找到。</td></tr>
+        <tr><td><code>OGC_ERROR_OPERATION_FAILED</code></td><td>-5</td><td>操作失败。</td></tr>
+        <tr><td><code>OGC_ERROR_INVALID_STATE</code></td><td>-6</td><td>非法状态。</td></tr>
+        <tr><td><code>OGC_ERROR_IO_ERROR</code></td><td>-7</td><td>IO 错误。</td></tr>
+        <tr><td><code>OGC_ERROR_PARSE_ERROR</code></td><td>-8</td><td>解析错误。</td></tr>
+        <tr><td><code>OGC_ERROR_UNSUPPORTED</code></td><td>-9</td><td>不支持。</td></tr>
+        <tr><td><code>OGC_ERROR_INTERNAL</code></td><td>-10</td><td>内部错误。</td></tr>
+        <tr><td><code>OGC_ERROR_PERMISSION_DENIED</code></td><td>-11</td><td>权限拒绝。</td></tr>
+      </tbody>
+    </table>
+
+    <div class="footer">④ 异常处理 · 返回 <a href="../eastarmap-sdk-net-index.html">手册索引</a></div>
+  </main>
+</div>
+</body>
+</html>

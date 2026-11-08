@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EastarMap.Chart .NET SDK — 二次开发手册（索引）</title>
+<link rel="stylesheet" href="assets/eastarmap.css">
+</head>
+<body>
+<div class="layout">
+
+  <!-- ============ 侧边导航 ============ -->
+  <aside class="sidebar">
+    <div class="brand">EastarMap.Chart SDK<br><small>.NET 二次开发手册 · v2.0.1</small></div>
+    <nav>
+      <div class="grp">总览</div>
+      <a href="eastarmap-sdk-net-index.html" class="active">📇 手册索引 / 快速开始</a>
+      <div class="grp">功能模块</div>
+      <a href="modules/01-env-version.html">① 环境与版本 (Compatibility)</a>
+      <a href="modules/02-data.html">② 数据入库与查询 (Data)</a>
+      <a href="modules/03-display.html">③ 显示配置 (Display)</a>
+      <a href="modules/04-error.html">④ 异常处理 (ErrorHandling)</a>
+      <a href="modules/05-extensibility.html">⑤ 扩展点 (Extensibility)</a>
+      <a href="modules/06-rendering.html">⑥ 渲染 (Rendering)</a>
+      <a href="modules/07-s57.html">⑦ S-57 解析 (S57)</a>
+      <a href="modules/08-security.html">⑧ 安全 (Security)</a>
+      <a href="modules/09-symbology.html">⑨ 符号化 (Symbology)</a>
+      <div class="grp">配套</div>
+      <a href="modules/10-end-to-end.html">⑩ 端到端完整示例</a>
+    </nav>
+  </aside>
+
+  <!-- ============ 主内容 ============ -->
+  <main class="main">
+    <div class="crumb"><a href="eastarmap-sdk-net-index.html">手册索引</a> › 总览</div>
+
+    <h1>EastarMap.Chart .NET SDK 二次开发手册</h1>
+    <p>
+      本手册面向<strong>二次开发</strong>，系统梳理 <code>code/cycle/net_api</code> 中
+      <code>EastarMap.Chart</code>（L2 门面层）<strong>已封装接口</strong>的分类、各函数详细说明与可运行示例代码，
+      帮助快速定位对应 API。
+    </p>
+
+    <div class="callout info">
+      <span class="tt">SDK 分层溯源链</span>
+      <code>ogc_chart_c_api</code>（C ABI，<code>ogc_*</code> 导出，925 个）
+      → <strong>L1</strong> <code>EastarMap.Chart.Interop</code>（P/Invoke 绑定，230 个）
+      → <strong>L2</strong> <code>EastarMap.Chart</code>（本手册对象，托管门面，158 个引用）
+      → 测试/示例。二次开发<strong>只应使用 L2 门面</strong>，禁止直接 P/Invoke（架构守卫强制）。
+    </div>
+
+    <!-- ============ 已封装 vs 未封装边界 ============ -->
+    <h2 id="scope">本手册覆盖范围：已封装接口 vs 未封装接口</h2>
+    <div class="callout warn">
+      <span class="tt">已封装（本手册覆盖，二次开发可用）</span>
+      仅 <code>EastarMap.Chart</code>（L2 门面层，<strong>158 个</strong> native 引用）对应的托管类/方法，按 <code>Compatibility / Data / Display / ErrorHandling / Extensibility / Rendering / S57 / Security / Symbology</code> 九个命名空间划分，即本手册各模块所记录的全部内容。
+    </div>
+    <div class="callout danger">
+      <span class="tt">未封装（本手册<u>不</u>覆盖，二次开发<u>不可直接调用</u>）</span>
+      native <code>ogc_chart_c_api</code> 共 <strong>925</strong> 个 <code>ogc_*</code> 导出，其中 <strong>695 个尚未绑定</strong>（L1 未包装）——这些接口<strong>未封装</strong>，例如：
+      <ul>
+        <li>按域未封装：<code>ais / alert / alert_zone / cache_manager / chart_viewer / geometry / feature / envelope(部分) / coordinate / coord_transformer / datasource / draw_context / draw_device / filter / geo / image / hit_test / field_defn / field_value / chart_parser / chart_plugin / coverage / cpa / circuit_breaker / collision / driver_manager / error_recovery / graceful_degradation / health_check / plugin / …</code></li>
+        <li>这些域在 L2 无门面类，二次开发<strong>不得</strong>绕过封装直接 P/Invoke（架构守卫强制，且可能缺安全释放）。</li>
+      </ul>
+    </div>
+    <div class="callout info">
+      <span class="tt">边界判定方法</span>
+      判断某个能力是否已封装：在 <code>src\EastarMap.Chart\**</code> 中是否存在对应 <strong>public</strong> 门面类/方法。存在 = 已封装（见本手册）；不存在 = 未封装（待阶段二/三，勿直接使用）。常见"仅部分封装"的域已在对应模块内标注。
+    </div>
+
+    <!-- ============ 快速开始 ============ -->
+    <h2 id="quickstart">快速开始</h2>
+    <div class="panel">
+      <h3>1. 引用程序集与目标框架</h3>
+      <ul>
+        <li>NuGet 包 <code>EastarMap.Chart</code>（版本 2.0.1-preview.21101），随包内置 <code>runtimes/win-x64/native/</code> 原生库。</li>
+        <li>目标框架：<code>net8.0</code>（主，P/Invoke 走 <code>[LibraryImport]</code> 源生成）；<code>net472</code>（兜底，同清单 <code>[DllImport]</code>）。</li>
+        <li>命名空间按域划分：<code>EastarMap.Chart.Compatibility / Data / Display / ErrorHandling / Extensibility / Rendering / S57 / Security / Symbology</code>。</li>
+      </ul>
+      <h3>2. native 库定位（重要前置）</h3>
+      <p><code>NativeResolver</code> 按回退序解析 <code>ogc_chart_c_api</code>：
+      <code>EASTARMAP_NATIVE_BIN</code> 环境变量 → 应用目录 → <code>install\bin</code> → PATH。
+      未解析时 L2 门面统一抛 <code>InvalidOperationException</code>（消息含探针明细）。</p>
+      <h3>3. 最小可运行骨架</h3>
+<pre><code><span class="kw">using</span> EastarMap.Chart.Compatibility;
+<span class="kw">using</span> EastarMap.Chart.S57;
+<span class="kw">using</span> EastarMap.Chart.Rendering;
+
+<span class="kw">static void</span> <span class="fn">Main</span>()
+{
+    <span class="kw">var</span> version = SdkVersion.Version;          <span class="cm">// "2.0.1.21101"</span>
+    <span class="kw">var</span> root    = EastarMapEnvironment.AppRoot;  <span class="cm">// native 树根</span>
+    <span class="kw">var</span> engine  = PortrayalEngine.Create(<span class="kw">new</span> PortrayalEngineOptions { S52RootPath = root });
+    <span class="kw">using</span> <span class="kw">var</span> parser = S57Parser.Create();
+    parser.Open(<span class="st">@"E:\CN422111.000"</span>);
+    <span class="kw">var</span> handle = parser.Parse();
+    engine.Dispose();
+    Console.WriteLine($<span class="st">"版本 {version}，解析句柄 {handle}"</span>);
+}</code></pre>
+      <h3>4. 架构约束速记</h3>
+      <ul>
+        <li>所有句柄类（<code>PortrayalEngine / S57Parser / ImageDevice / ...</code>）实现 <code>IDisposable</code>，用 <code>using</code> 或显式释放。</li>
+        <li>返回 <code>NULL</code> / 非 0 错误码 → 门面抛 <code>ChartSdkException</code>（携带 native 错误码与消息）。</li>
+        <li>双 TFM 同构：同一份代码在 <code>net8.0</code> 与 <code>net472</code> 行为一致。</li>
+      </ul>
+    </div>
+
+    <!-- ============ 模块总览 ============ -->
+    <h2 id="modules">功能模块索引（目录章节标题与内容概要）</h2>
+    <p>下表为各章节标题、内容概要及对应源文件，供快速定位。点击章节号进入完整模块文档。</p>
+
+    <table>
+      <thead>
+        <tr><th style="width:40px">章节</th><th style="width:150px">模块（命名空间）</th><th>内容概要 / 已封装 API 清单</th><th style="width:210px">L2 源文件</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><a href="modules/01-env-version.html">①</a></td>
+          <td>环境与版本<br><code>Compatibility</code></td>
+          <td>
+            环境目录锚点（AppRoot/ConfigDir/S52ResourceDir…）、目录创建、线程局部错误码；
+            SDK 版本真源握手（Version/BuildDate/Major/Minor/Patch）。
+          </td>
+          <td><code>Compatibility\EastarMapEnvironment.cs</code><br><code>Compatibility\SdkVersion.cs</code></td>
+        </tr>
+        <tr>
+          <td><a href="modules/02-data.html">②</a></td>
+          <td>数据入库与查询<br><code>Data</code></td>
+          <td>
+            S-57 转 SQLite（DumpOptions/ChartDump/DumpReport 进度回调）、
+            SQLite 查询门面（ListCells/InspectCell/QueryFeatures/CountFeatures + 过滤）、
+            要素 DTO（FeatureSummary/FeatureAttribute/FeatureGeometry）、
+            用户航线库 EDB（UserRouteDatabase 增删改查 + 加密库口令）。
+          </td>
+          <td><code>Data\*.cs</code>（ChartDump/DumpOptions/FeatureQuery/FeatureSummary/FeatureAttribute/UserRouteDatabase）</td>
+        </tr>
+        <tr>
+          <td><a href="modules/03-display.html">③</a></td>
+          <td>显示配置<br><code>Display</code></td>
+          <td>ChartConfig 创建与 DisplayMode / Dpi / ShowGrid 读写往返（8 函数）。</td>
+          <td><code>Display\ChartConfig.cs</code></td>
+        </tr>
+        <tr>
+          <td><a href="modules/04-error.html">④</a></td>
+          <td>异常处理<br><code>ErrorHandling</code></td>
+          <td>ChartSdkException（code/module/message）、NativeError 映射（Describe/EnsureSuccess）、OgcErrorCode 错误码枚举（0 / -1..-11）。</td>
+          <td><code>ErrorHandling\ChartSdkException.cs</code><br><code>ErrorHandling\NativeError.cs</code><br><code>ErrorHandling\OgcErrorCode.cs</code></td>
+        </tr>
+        <tr>
+          <td><a href="modules/05-extensibility.html">⑤</a></td>
+          <td>扩展点<br><code>Extensibility</code></td>
+          <td>日志级别枚举与扩展点（ISdkLogSink/TraceLogSink/SdkLog 控制台与级别开关）、JSON 序列化扩展点（ISdkJsonSerializer/StjJsonSerializer）。</td>
+          <td><code>Extensibility\SdkExtensibility.cs</code></td>
+        </tr>
+        <tr>
+          <td><a href="modules/06-rendering.html">⑥</a></td>
+          <td>渲染<br><code>Rendering</code></td>
+          <td>
+            ImageDevice（创建/缩放/清屏/取像素/混合/后端配置）、
+            PortrayalEngine（ABI/能力位图/创建+授权双路径/图幅范围）、
+            渲染（Render→RenderOutput 像素+诊断+摘要）、
+            要素载入（LoadFeatures/FeatureResult 两段式枚举）。
+          </td>
+          <td><code>Rendering\ImageDevice.cs</code><br><code>Rendering\PortrayalEngine.cs</code></td>
+        </tr>
+        <tr>
+          <td><a href="modules/07-s57.html">⑦</a></td>
+          <td>S-57 解析<br><code>S57</code></td>
+          <td>
+            S57Parser（create/open/parse/parse_file + 要素/空间过滤）、
+            S57ParseConfig、增量状态机 IncrementalParser（start/parse_next/pause/resume/cancel/progress）、
+            增量主机 IncrementalParserHost（iparser 7 函数 + ParseWithProgress 进度事件）。
+          </td>
+          <td><code>S57\S57Parser.cs</code><br><code>S57\IncrementalParser.cs</code><br><code>S57\IncrementalParserHost.cs</code></td>
+        </tr>
+        <tr>
+          <td><a href="modules/08-security.html">⑧</a></td>
+          <td>安全<br><code>Security</code></td>
+          <td>DataEncryption（加密/解密，自增缓冲重试）、SecureLibraryLoader（安全加载器 + 信任库公钥读取 + 签名校验）。<br>
+            <span class="tag note">限注</span> DataEncryption/SecureLibraryLoader 均带 <strong>native 侧未实现</strong>限注（未 Initialize / stub），详见 <a href="modules/08-security.html">模块⑧</a>。</td>
+          <td><code>Security\DataEncryption.cs</code><br><code>Security\SecureLibraryLoader.cs</code></td>
+        </tr>
+        <tr>
+          <td><a href="modules/09-symbology.html">⑨</a></td>
+          <td>符号化<br><code>Symbology</code></td>
+          <td>
+            SdkColor/ColorValue（颜色 5 函数）、画笔/画刷/字体（SdkPen/SdkBrush/SdkFont）、
+            Symbolizer 符号器 + SymbolizerRule 规则（比例尺区间判定/符号器聚合）。
+          </td>
+          <td><code>Symbology\Symbology.cs</code><br><code>Symbology\Symbolizer.cs</code></td>
+        </tr>
+        <tr>
+          <td><a href="modules/10-end-to-end.html">⑩</a></td>
+          <td>端到端完整示例<br><code>—</code></td>
+          <td>「解析 → dump → 查询 → EDB → 渲染 → 导出 PNG」全链路可运行示例，串联各模块。</td>
+          <td><code>samples\EastarMap.Chart.ConsoleSmoke\Program.cs</code><br><code>samples\EastarMap.Chart.Demo.Wpf\**</code></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- ============ 快速定位速查表 ============ -->
+    <h2 id="search">API 快速定位速查表</h2>
+    <p>按「想做什么」反查入口类与方法（<code>类.成员</code>）。</p>
+    <table>
+      <thead><tr><th style="width:230px">开发需求</th><th>入口（类.成员）</th><th style="width:70px">模块</th></tr></thead>
+      <tbody>
+        <tr><td>获取 SDK 版本号</td><td><code>SdkVersion.Version / Major / Minor / Patch</code></td><td>①</td></tr>
+        <tr><td>取 native 目录锚点</td><td><code>EastarMapEnvironment.AppRoot / S52ResourceDir / TempDir …</code></td><td>①</td></tr>
+        <tr><td>S-57 图幅转 SQLite</td><td><code>ChartDump.Execute / ExecuteAsync</code> + <code>DumpOptions</code></td><td>②</td></tr>
+        <tr><td>列出 SQLite 内数据集</td><td><code>FeatureQuery.ListCells</code></td><td>②</td></tr>
+        <tr><td>读取数据集元信息</td><td><code>FeatureQuery.InspectCell</code> → <code>CellSummary</code></td><td>②</td></tr>
+        <tr><td>分页查询要素</td><td><code>FeatureQuery.QueryFeatures</code> + <code>FeatureQueryFilter</code></td><td>②</td></tr>
+        <tr><td>要素计数 / 过滤</td><td><code>FeatureQuery.CountFeatures / FilterByObjectClass / FilterByBbox</code></td><td>②</td></tr>
+        <tr><td>用户航线库读写</td><td><code>UserRouteDatabase.Open / FeatureUpsert / FeatureList / FeatureGet / FeatureDelete</code></td><td>②</td></tr>
+        <tr><td>显示模式 / DPI / 网格</td><td><code>ChartConfig.Create / DisplayMode / Dpi / ShowGrid</code></td><td>③</td></tr>
+        <tr><td>取 native 错误消息</td><td><code>NativeError.Describe / EnsureSuccess</code></td><td>④</td></tr>
+        <tr><td>关闭 native 日志</td><td><code>SdkLog.ConsoleOutputEnabled = false</code></td><td>⑤</td></tr>
+        <tr><td>创建图像画布</td><td><code>ImageDevice.Create(w, h)</code></td><td>⑥</td></tr>
+        <tr><td>初始化渲染引擎</td><td><code>PortrayalEngine.Create(PortrayalEngineOptions)</code></td><td>⑥</td></tr>
+        <tr><td>直渲图幅 → 像素</td><td><code>engine.Render(chartPath, PortrayalRenderOptions)</code> → <code>RenderOutput</code></td><td>⑥</td></tr>
+        <tr><td>载入要素枚举</td><td><code>engine.LoadFeatures(chartPath)</code> → <code>FeatureResult</code></td><td>⑥</td></tr>
+        <tr><td>打开/解析 S-57 图幅</td><td><code>S57Parser.Create / Open / Parse / ParseFile</code></td><td>⑦</td></tr>
+        <tr><td>增量分批解析</td><td><code>IncrementalParser / IncrementalParserHost</code></td><td>⑦</td></tr>
+        <tr><td>数据加解密</td><td><code>DataEncryption.Create / Encrypt / Decrypt</code></td><td>⑧</td></tr>
+        <tr><td>安全加载 / 签名校验</td><td><code>SecureLibraryLoader.Create / VerifySignature</code></td><td>⑧</td></tr>
+        <tr><td>构造颜色</td><td><code>SdkColor.FromRgb / FromRgba / FromHex</code></td><td>⑨</td></tr>
+        <tr><td>画笔 / 画刷 / 字体</td><td><code>SdkPen / SdkBrush / SdkFont</code></td><td>⑨</td></tr>
+        <tr><td>符号器与规则</td><td><code>Symbolizer / SymbolizerRule</code></td><td>⑨</td></tr>
+      </tbody>
+    </table>
+
+    <h2 id="runtime">运行与部署要点</h2>
+    <div class="panel">
+      <ul>
+        <li><strong>native 测试环境</strong>：<code>install\bin</code>（118 文件，SHA 冻结于 <code>native\native-manifest.json</code>）。</li>
+        <li><strong>S-57 样例图幅</strong>：<code>E:\CN422111.000</code>。</li>
+        <li><strong>授权</strong>：引擎创建可传 <code>LicenseFilePath</code>（<code>config\license.lic</code>）或 <code>CredentialName</code>（凭据库），详见 ⑥。</li>
+        <li><strong>常用验证命令</strong>：
+<pre><code>dotnet build EastarMap.Chart.sln -c Release
+dotnet test tests\EastarMap.Chart.ArchTests
+python tools\verify_baseline.py          <span class="cm"># 925 导出 + 118 native SHA 门禁</span>
+python tools\extract_exports.py --verify <span class="cm"># 基线 925 对账</span></code></pre>
+        </li>
+      </ul>
+    </div>
+
+    <div class="footer">
+      EastarMap.Chart .NET SDK 二次开发手册 · 由源码 <code>src\EastarMap.Chart\**</code> 自动梳理 ·
+      目标框架 net8.0 / net472 · 版本 2.0.1-preview.21101
+    </div>
+  </main>
+</div>
+</body>
+</html>

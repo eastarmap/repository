@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>⑧ 安全 — EastarMap.Chart SDK 手册</title>
+<link rel="stylesheet" href="../assets/eastarmap.css">
+</head>
+<body>
+<div class="layout">
+
+  <aside class="sidebar">
+    <div class="brand">EastarMap.Chart SDK<br><small>.NET 二次开发手册 · v2.0.1</small></div>
+    <nav>
+      <div class="grp">总览</div>
+      <a href="../eastarmap-sdk-net-index.html">📇 手册索引 / 快速开始</a>
+      <div class="grp">功能模块</div>
+      <a href="01-env-version.html">① 环境与版本 (Compatibility)</a>
+      <a href="02-data.html">② 数据入库与查询 (Data)</a>
+      <a href="03-display.html">③ 显示配置 (Display)</a>
+      <a href="04-error.html">④ 异常处理 (ErrorHandling)</a>
+      <a href="05-extensibility.html">⑤ 扩展点 (Extensibility)</a>
+      <a href="06-rendering.html">⑥ 渲染 (Rendering)</a>
+      <a href="07-s57.html">⑦ S-57 解析 (S57)</a>
+      <a href="08-security.html" class="active">⑧ 安全 (Security)</a>
+      <a href="09-symbology.html">⑨ 符号化 (Symbology)</a>
+      <div class="grp">配套</div>
+      <a href="10-end-to-end.html">⑩ 端到端完整示例</a>
+    </nav>
+  </aside>
+
+  <main class="main">
+    <div class="crumb"><a href="../eastarmap-sdk-net-index.html">手册索引</a> › ⑧ 安全</div>
+    <h1>⑧ 安全（命名空间 <code>EastarMap.Chart.Security</code>）</h1>
+
+    <p>本模块提供<strong>数据加密</strong>与<strong>安全库加载</strong>两类能力，用于保护敏感数据与校验被加载库的可信性。</p>
+
+    <table>
+      <thead><tr><th>类</th><th>类别</th><th>职责</th><th>源文件</th></tr></thead>
+      <tbody>
+        <tr><td><a href="#enc"><code>DataEncryption</code></a></td><td>IDisposable</td><td>数据加解密</td><td><code>Security\DataEncryption.cs</code></td></tr>
+        <tr><td><a href="#loader"><code>SecureLibraryLoader</code></a></td><td>IDisposable</td><td>安全库加载 / 签名校验 / 信任库公钥读取</td><td><code>Security\SecureLibraryLoader.cs</code></td></tr>
+      </tbody>
+    </table>
+
+    <!-- ==================== DataEncryption ==================== -->
+    <h2 id="enc" class="anchor">DataEncryption（数据加密门面）</h2>
+    <p>封装 <code>ogc_data_encryption_create/encrypt/decrypt/destroy</code> 四函数。<span class="tag idisposable">IDisposable</span></p>
+
+    <div class="member">
+      <div class="sig">public static DataEncryption Create(string? key = null)</div>
+      <div class="desc">创建加密工具（key 当前由 native 忽略，保留契约位）。NULL 返回 → 确定性 <code>ChartSdkException</code>。</div>
+    </div>
+    <div class="member">
+      <div class="sig">public byte[] Encrypt(byte[] plaintext)</div>
+      <div class="desc">加密（明文 → 密文；UTF-8 无关，字节级）。</div>
+    </div>
+    <div class="member">
+      <div class="sig">public byte[] Decrypt(byte[] ciphertext)</div>
+      <div class="desc">解密（密文 → 明文）。</div>
+    </div>
+
+    <h3>缓冲契约说明</h3>
+    <p>
+      <code>output_size</code> 为 in/out —— 入参缓冲容量，出参实际长度；容量不足直接返 -1 且不回填所需长度。
+      本门面按「自增缓冲重试」收敛（起始 = 明文长度 + 64，逐次翻倍，上限 64 MiB）。
+    </p>
+
+    <div class="callout danger">
+      <span class="tt">native 限注（已归档）</span>
+      C API <code>ogc_data_encryption_create</code> 未调用 <code>DataEncryption::Initialize</code>，实现内 <code>m_initialized==false</code> →
+      <code>Encrypt/Decrypt</code> 恒返回空向量。当前真机往返对<strong>空串成立</strong>；非空串往返待 native 补 Initialize。
+      见源码 <code>DataEncryption.cs</code> 类注释的解除建议。
+    </div>
+
+    <h3>示例</h3>
+<pre><code><span class="kw">using</span> EastarMap.Chart.Security;
+
+<span class="kw">using</span> <span class="kw">var</span> enc = DataEncryption.Create(<span class="st">"my-key"</span>);
+<span class="kw">var</span> ct  = enc.Encrypt(Encoding.UTF8.GetBytes(<span class="st">"敏感数据"</span>));
+<span class="kw">var</span> pt  = enc.Decrypt(ct);
+Console.WriteLine(Encoding.UTF8.GetString(pt));   <span class="cm">// 敏感数据</span></code></pre>
+
+    <!-- ==================== SecureLibraryLoader ==================== -->
+    <h2 id="loader" class="anchor">SecureLibraryLoader（安全库加载门面，可选件）</h2>
+    <p>封装 <code>ogc_secure_library_loader_create/load/verify_signature/destroy</code> 四函数。<span class="tag idisposable">IDisposable</span></p>
+
+    <div class="member">
+      <div class="sig">public static SecureLibraryLoader Create(string allowedPaths)</div>
+      <div class="desc">创建安全加载器；<code>allowedPaths</code> 为允许路径白名单（分号分隔）。native 返回 NULL（stub）→ 抛 <code>ChartSdkException</code>（含 C 实名）。</div>
+    </div>
+    <div class="member">
+      <div class="sig">public string AllowedPaths { get; }</div>
+      <div class="desc">允许路径白名单（分号分隔；native 当前忽略）。</div>
+    </div>
+    <div class="member">
+      <div class="sig">public IntPtr Load(string libraryPath)</div>
+      <div class="desc">加载库（返回 native 库句柄；失败返回 <code>IntPtr.Zero</code>）。</div>
+    </div>
+    <div class="member">
+      <div class="sig">public static bool VerifySignature(IntPtr libraryHandle, string publicKey, out int errorCode)</div>
+      <div class="desc">校验库签名（对照信任库公钥）。返回 false = 拒绝（<code>errorCode</code> 为 native 原始码）。</div>
+    </div>
+    <div class="member">
+      <div class="sig">public static string? ReadTrustStorePublicKey(string trustStorePath)</div>
+      <div class="desc">读取信任库（trust_store.json）内首个 license-signing 公钥 PEM（含换行；缺失返 null）。</div>
+    </div>
+
+    <div class="callout danger">
+      <span class="tt">native 限注（已归档）</span>
+      C API 侧四函数当前均为 stub（<code>sdk_c_api_plugin.cpp:400-417</code>）：
+      <code>create</code> 恒返 NULL、<code>load</code> 恒返 NULL、<code>verify_signature</code> 恒返 -1。
+      「篡改必拒」安全语义成立，但「正样本通过」待 native 实现。见源码 <code>SecureLibraryLoader.cs</code> 类注释。
+    </div>
+
+    <h3>示例：读取信任库公钥 + 签名校验</h3>
+<pre><code><span class="kw">using</span> EastarMap.Chart.Security;
+
+<span class="kw">var</span> pem = SecureLibraryLoader.ReadTrustStorePublicKey(<span class="st">@"config\trust_store.json"</span>);
+<span class="kw">if</span> (pem != <span class="kw">null</span>)
+{
+    <span class="kw">var</span> hLib = IntPtr.Zero;   <span class="cm">// 由 Load 获得或外部句柄</span>
+    <span class="kw">bool</span> ok = SecureLibraryLoader.VerifySignature(hLib, pem, <span class="kw">out</span> <span class="kw">int</span> rc);
+    Console.WriteLine($<span class="st">"签名校验：{(ok ? "通过" : "拒绝")}（rc={rc}）"</span>);
+}
+
+<span class="cm">// create 目前为 stub → 会确定性抛 ChartSdkException</span>
+<span class="kw">try</span> { <span class="kw">using</span> <span class="kw">var</span> loader = SecureLibraryLoader.Create(<span class="st">@"C:\allowed"</span>); }
+<span class="kw">catch</span> (ChartSdkException ex) { Console.WriteLine(ex.Message); }</code></pre>
+
+    <div class="footer">⑧ 安全 · 返回 <a href="../eastarmap-sdk-net-index.html">手册索引</a></div>
+  </main>
+</div>
+</body>
+</html>
