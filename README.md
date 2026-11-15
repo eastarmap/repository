@@ -1,3 +1,35 @@
+# EastarMap
+
+Nautical chart tools for **inland waterway navigation** and **marine route planning**. 
+Provides CLI access to ENC/S-57 electronic navigational charts with **navigation alert** capabilities.
+
+EastarMap 2.0.2.21109 Released
+
+EastarMap_2.0.2.21109_win32_x64.exe is now available. This release brings significant updates across localized CLI configuration, next-generation S-100 chart support, measurement and alerting capabilities, route management, tile production, and the secondary-development ecosystem.
+
+## Highlights
+
+<mark>Localized CLI configuration</mark>: The command-line service now supports flexible local configuration.
+
+<mark>High-performance chart rendering</mark>: Loads and displays S-101, S-102, S-104, S-111, and S-57 datasets with fast, efficient rendering.
+
+<mark>Measurement tools</mark>: Distance, area, and bearing measurement.
+
+<mark>Alerting</mark>: Supports 8 configurable alert rules, plus alert statistics, alert export, and alert simulation.
+
+<mark>Route management</mark>: Create, edit, import, and export routes.
+
+<mark>Tile toolchain</mark>: Create, extend, update, and browse MBTiles.
+
+<mark>Samples and docs</mark>: Added sample data under sample/data and a new .NET SDK secondary-development manual.
+
+<mark>Packages</mark>: New npm and Python release packages for multi-language integration.
+
+<mark>Web service</mark>: Tile service with web browsing support.
+
+## Release page
+https://github.com/eastarmap/repository/releases
+
 # 东星海图导航预警系统产品说明
 
 ## 1. 产品简介
