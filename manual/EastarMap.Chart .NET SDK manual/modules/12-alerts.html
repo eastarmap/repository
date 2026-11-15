@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>⑪ 预警 — EastarMap.Chart SDK 手册</title>
+<link rel="stylesheet" href="../assets/eastarmap.css">
+</head>
+<body>
+<div class="layout">
+
+  <aside class="sidebar">
+    <div class="brand">EastarMap.Chart SDK<br><small>.NET 二次开发手册 · v2.0.2</small></div>
+    <nav>
+      <div class="grp">总览</div>
+      <a href="../eastarmap-sdk-net-index.html">📇 手册索引 / 快速开始</a>
+      <div class="grp">功能模块</div>
+      <a href="01-env-version.html">① 环境与版本 (Compatibility)</a>
+      <a href="02-data.html">② 数据入库与查询 (Data)</a>
+      <a href="03-display.html">③ 显示配置 (Display)</a>
+      <a href="04-error.html">④ 异常处理 (ErrorHandling)</a>
+      <a href="05-extensibility.html">⑤ 扩展点 (Extensibility)</a>
+      <a href="06-rendering.html">⑥ 渲染 (Rendering / Drawing / Imaging)</a>
+      <a href="07-s57.html">⑦ S-57 解析 (S57)</a>
+      <a href="08-security.html">⑧ 安全 (Security)</a>
+      <a href="09-symbology.html">⑨ 符号化 (Symbology)</a>
+      <a href="11-navigation.html">⑩ 导航 (Navigation)</a>
+      <a href="12-alerts.html" class="active">⑪ 预警 (Alerts)</a>
+      <a href="13-ais.html">⑫ AIS 目标 (Ais)</a>
+      <div class="grp">配套</div>
+      <a href="14-layers-viewing.html">⑬ 图层/视图/变换</a>
+      <a href="15-coverage-scope.html">⑭ 手册覆盖范围</a>
+      <a href="10-end-to-end.html">⑮ 端到端完整示例</a>
+    </nav>
+  </aside>
+
+  <main class="main">
+    <div class="crumb"><a href="../eastarmap-sdk-net-index.html">手册索引</a> › ⑪ 预警</div>
+    <h1>⑪ 预警（命名空间 <code>EastarMap.Chart.Alerts</code>）</h1>
+
+    <p>阶段三（M4）新增模块：告警快照 / 告警引擎 / 告警区带三件——绑定 <code>ogc_alert_*（16+array_destroy）/
+    ogc_alert_engine_*（13）/ ogc_alert_zone_*（4）</code>。区带判定与告警属性快照为<strong>内核全真实</strong>；
+    引擎的登记/确认/移除真实，<strong>事件触发链 B9/T42 起收口</strong>（get_alert/alert_count/set_callback/clear_alerts 全真实——见下表）。</p>
+
+    <table>
+      <thead><tr><th>类</th><th>职责</th><th>源文件</th></tr></thead>
+      <tbody>
+        <tr><td><a href="#alert"><code>Alert</code></a></td><td>告警快照（16 函数 + array_destroy）</td><td><code>Alerts\Alert.cs</code></td></tr>
+        <tr><td><a href="#engine"><code>AlertEngine</code></a></td><td>告警引擎（13 函数；登记/确认/移除真实链）</td><td><code>Alerts\AlertEngine.cs</code></td></tr>
+        <tr><td><a href="#zone"><code>AlertZone</code></a></td><td>GeoJSON 区带（圆形/多边形；全真实）</td><td><code>Alerts\AlertZone.cs</code></td></tr>
+      </tbody>
+    </table>
+
+    <h2 id="alert" class="anchor">Alert（告警快照）</h2>
+    <div class="member">
+      <div class="sig">public static unsafe Alert Create(int type, int level, string message)</div>
+      <div class="desc">创建告警（引用 1 归调用方）。<strong>内核实况</strong>：create 丢弃 type 实参（event_type 硬编码 "alert"）→
+      <code>Type</code> getter 恒 0（PS-9 限注）；level/message 正常。</div>
+    </div>
+    <div class="member">
+      <div class="sig">public long Id · string Message · int Level/Type · bool IsAcknowledged · Timestamp</div>
+      <div class="desc">八属性往返（message/level/acknowledged 等）。<code>Timestamp</code> 内核写 long 读 double（跨型）——断言 <code>> 0</code> 即可。</div>
+    </div>
+    <div class="member">
+      <div class="sig">public void SetPosition(Geometry.Coordinate c) · GetPosition()（X=经度 Y=纬度）</div>
+      <div class="desc">位置语义：<strong>内核 ogc_coordinate_t 直通</strong>——X 为经度、Y 为纬度（与常见 Lat/Lon 顺序相反，注意）。</div>
+    </div>
+    <div class="member">
+      <div class="sig">public static unsafe void DestroyArray(void** array, int count)</div>
+      <div class="desc">批量销毁（内核批读配套）。</div>
+    </div>
+
+    <h2 id="engine" class="anchor">AlertEngine（告警引擎）</h2>
+    <div class="member">
+      <div class="sig">public static unsafe AlertEngine Create()（内核 ctx 惰性单例）· Initialize()（真实 0/-1）· Shutdown()</div>
+      <div class="desc">EngineConfig 缺省（1s 检查间隔 + 去重 60s）。</div>
+    </div>
+    <div class="member">
+      <div class="sig">public unsafe int AddAlert(Alert alert)（<strong>所有权转移</strong>）</div>
+      <div class="desc">表存 wrapper 裸指针且 ctx 析构统一 delete → 调用方 Alert 对象立即失效；引擎 Dispose 即统一释放。
+      <strong>门面已强制先 Initialize</strong>（内核缺陷：未初始化引擎直接 add 会致析构崩溃，PS-9 归档）。</div>
+    </div>
+    <div class="member">
+      <div class="sig">public unsafe void AcknowledgeAlert(Alert alert)（add 前调用）· RemoveAlert(id)（B3/T16 起真实表删即释放）</div>
+      <div class="desc">确认走 acknowledge service（wrapper 置位）+ 登记。<code>RemoveAlert</code> B3/T16 起真实（delete wrapper 后 erase，原表删不 delete 泄漏已关闭）。</div>
+    </div>
+    <div class="member">
+      <div class="sig">public Alert? GetAlert(id)（B9/T42 起真实）· AlertCount（B9/T42 起真实）· SetCallback（B9/T42 起真消费）· ClearAlerts（B3/T16 起真实）· CheckAll</div>
+      <div class="desc"><strong>事件触发链 B9/T42 起收口</strong>：get_alert 按 id 查表借出、get_alert_count 读 activeAlerts.size()（原 ctx 指针混用 AV 已修）、
+      set_callback 真消费（check_all 注入链 AIS→碰撞→告警触发宿主回调）、clear_alerts 真实清表释放。</div>
+    </div>
+
+    <h3>示例：告警创建 → 确认 → 入引擎 → 统一释放</h3>
+<pre><code><span class="kw">using</span> EastarMap.Chart.Alerts;
+
+<span class="kw">using var</span> engine = AlertEngine.Create();
+engine.Initialize();
+
+<span class="kw">var</span> alert = Alert.Create(1, 2, <span class="st">"区带入侵告警"</span>);
+alert.SetPosition(<span class="kw">new</span> EastarMap.Chart.Geometry.Coordinate(120.05, 31.05, 0, <span class="kw">double</span>.NaN));
+engine.AcknowledgeAlert(alert);              <span class="cm">// add 前确认（转移后外壳失效）</span>
+Console.WriteLine($<span class="st">"已确认: {alert.IsAcknowledged}"</span>);
+engine.AddAlert(alert);                      <span class="cm">// 所有权转移：alert 对象至此失效</span>
+<span class="cm">// 引擎 Dispose 时内核统一释放——无需（也不可）再 Dispose alert</span></code></pre>
+
+    <h2 id="zone" class="anchor">AlertZone（GeoJSON 区带）</h2>
+    <div class="member">
+      <div class="sig">public static unsafe AlertZone CreateFromGeoJson(string geoJson)（<strong>内核全真实</strong>）</div>
+      <div class="desc">两种契约（alert_zone.cpp:94 实证）：<code>"Point"</code> + <code>"coordinates":[lon,lat]</code> +
+      <code>"radiusM":>0</code> → <strong>圆形区带</strong>；<code>"Polygon"</code> coordinates → <strong>单环多边形</strong>（≥3 顶点）。
+      解析失败抛 <code>ChartSdkException</code> 并附 <code>ogc_alert_zone_get_last_error</code> 文本。</div>
+    </div>
+    <div class="member">
+      <div class="sig">public AlertZoneCheckResult CheckPoint(double latitude, double longitude)</div>
+      <div class="desc">区内 <code>Inside=true</code> 且 DistanceM=<strong>进入深度</strong>（到最近边界）；区外 DistanceM=到最近边界距离。</div>
+    </div>
+
+    <h3>示例：圆形区带入侵判定</h3>
+<pre><code><span class="kw">using</span> EastarMap.Chart.Alerts;
+
+<span class="kw">using var</span> zone = AlertZone.CreateFromGeoJson(
+    <span class="st">"{\"type\":\"Point\",\"coordinates\":[120.05,31.05],\"radiusM\":2000}"</span>);
+
+<span class="kw">var</span> hit = zone.CheckPoint(31.05, 120.05);      <span class="cm">// 圆心 → 必入区</span>
+<span class="kw">var</span> far = zone.CheckPoint(31.50, 120.05);      <span class="cm">// 0.45° 纬度 ≈ 50km → 区外</span>
+Console.WriteLine($<span class="st">"入区={hit.Inside} 进入深度={hit.DistanceM:F0}m；区外距离={far.DistanceM:F0}m"</span>);</code></pre>
+
+    <h3>内核 stub / 缺陷速查（据实归档）</h3>
+    <table>
+      <thead><tr><th>接口</th><th>实况</th><th>处置</th></tr></thead>
+      <tbody>
+        <tr><td>Alert.Type</td><td>恒 0（create 丢弃 type）</td><td>以 level/message 区分告警</td></tr>
+        <tr><td>Alert.Timestamp</td><td>写 long 读 double 跨型</td><td>仅判 > 0</td></tr>
+      </tbody>
+    </table>
+
+    <div class="footer">⑪ 预警 · 返回 <a href="../eastarmap-sdk-net-index.html">手册索引</a></div>
+  </main>
+</div>
+</body>
+</html>

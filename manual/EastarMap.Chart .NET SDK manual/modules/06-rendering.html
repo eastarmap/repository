@@ -10,7 +10,7 @@
 <div class="layout">
 
   <aside class="sidebar">
-    <div class="brand">EastarMap.Chart SDK<br><small>.NET 二次开发手册 · v2.0.1</small></div>
+    <div class="brand">EastarMap.Chart SDK<br><small>.NET 二次开发手册 · v2.0.2</small></div>
     <nav>
       <div class="grp">总览</div>
       <a href="../eastarmap-sdk-net-index.html">📇 手册索引 / 快速开始</a>
@@ -20,12 +20,17 @@
       <a href="03-display.html">③ 显示配置 (Display)</a>
       <a href="04-error.html">④ 异常处理 (ErrorHandling)</a>
       <a href="05-extensibility.html">⑤ 扩展点 (Extensibility)</a>
-      <a href="06-rendering.html" class="active">⑥ 渲染 (Rendering)</a>
+      <a href="06-rendering.html" class="active">⑥ 渲染 (Rendering / Drawing / Imaging)</a>
       <a href="07-s57.html">⑦ S-57 解析 (S57)</a>
       <a href="08-security.html">⑧ 安全 (Security)</a>
       <a href="09-symbology.html">⑨ 符号化 (Symbology)</a>
       <div class="grp">配套</div>
-      <a href="10-end-to-end.html">⑩ 端到端完整示例</a>
+            <a href="11-navigation.html">⑩ 导航 (Navigation)</a>
+      <a href="12-alerts.html">⑪ 预警 (Alerts)</a>
+      <a href="13-ais.html">⑫ AIS 目标 (Ais)</a>
+      <a href="14-layers-viewing.html">⑬ 图层/视图/变换</a>
+      <a href="15-coverage-scope.html">⑭ 手册覆盖范围</a>
+      <a href="10-end-to-end.html">⑮ 端到端完整示例</a>
     </nav>
   </aside>
 
@@ -224,7 +229,7 @@ dev.Blend(overlay);                           <span class="cm">// 混合叠加�
     <span class="kw">var</span> bmp = BitmapSource.Create(out.Width, out.Height, <span class="num">96</span>, <span class="num">96</span>,
         PixelFormats.Bgra32, <span class="kw">null</span>, out.Pixels, out.Stride);
     bmp.Freeze();
-    <span class="cm">// 或字节流落盘（见 10 端到端示例的 PngWriter）</span>
+    <span class="cm">// 或字节流落盘（见 15 端到端示例的 PngWriter）</span>
 }
 
 <span class="cm">// 图幅范围 + 要素枚举</span>
@@ -269,6 +274,37 @@ Console.WriteLine($<span class="st">"要素数 {feats.Count}；范围 lon[{exten
       <span class="tt">等深线一致性约束</span>
       native 契约 <code>PortrayalRenderConfig::ValidateContours()</code>：<code>shallow ≤ safety ≤ deep</code>，越界即 <code>INVALID_PARAM</code>。
       门面只给 safety 时会把三元夹取为自洽值；如需同时设置多个等深线请遵守该序。
+    </div>
+
+    <!-- ==================== 绘制族（B49–B51） ==================== -->
+    <h2 id="drawfamily" class="anchor">绘制族门面（B49–B51 批交付）</h2>
+    <p>覆盖 <code>ogc_draw_style_*</code> / <code>ogc_draw_device_*</code> / <code>ogc_draw_engine_*</code> / <code>ogc_image_*</code>（<code>Drawing</code>/<code>Imaging</code> 命名空间）与 B50–B51 渲染支撑域（<code>Rendering</code>）。全部通过 10k 泄漏复验（ActiveCount 配对）。</p>
+
+    <table>
+      <thead><tr><th>类</th><th>实况</th><th>开发口径</th></tr></thead>
+      <tbody>
+        <tr><td><code>DrawStyle</code>（Drawing）</td><td>create/destroy 真实；get_pen/brush/font 返回<strong>内部成员地址借出</strong>（生命周期随样式）；set_* 值拷贝装配</td><td>装配后经成员视图读回一致；勿独立销毁借出句柄</td></tr>
+        <tr><td><code>DrawDevice</code>（Drawing）</td><td>真实设备工厂：1=RASTER/3=SVG/4=TILE/<strong>未知类型回退 Raster</strong>（据实）</td><td><code>CreateRaster(w,h)</code> 便捷入口；<code>ImageBuffer</code> 借出缓冲</td></tr>
+        <tr><td><code>DrawContext</code>（Drawing）</td><td>create 需非 NULL 设备；begin/end 配对；<strong>B8/T35 起 style 形参真实生效</strong>（draw_point/line/rect/fill_rect/text 经内核 SetStyle 状态消费；draw_geometry 带样式重载）；clip 按几何包络设裁剪矩形</td><td>Clear(r,g,b,a) 后像素落设备缓冲；style 影响输出像素</td></tr>
+        <tr><td><code>DrawEngine</code>（Drawing）</td><td><strong>B5/T21 起 create 真实</strong>——CApiDrawEngine + 离屏 RasterImageDevice(256×256)，句柄非 NULL；destroy NULL 安全</td><td>真实引擎链走 PortrayalEngine；DrawEngine 亦可独立创建离屏引擎</td></tr>
+        <tr><td><code>SdkImage</code>（Imaging）</td><td>create 尺寸/通道/缓冲一致（get_data 可写、get_data_const 同缓冲别名）；<strong>save PNG 须 .png+4 通道</strong>；<strong>LoadFromFile 真实装载器</strong>（文件不存在/格式不支持才返 NULL → 门面抛）</td><td>落盘走 SaveToFile；读回走 LoadFromFile</td></tr>
+        <tr><td><code>LabelEngine / LabelInfo</code>（Rendering）</td><td><strong>B5/T22 起全真实</strong>：engine set_max_labels 往返一致（默认 100）、set_collision_detection 互逆语义、clear 清缓存；info 七项全真实（create 构造、get_text/get_x/get_y/set_text/set_position 生效）</td><td>LabelEngine 与 LabelInfo 均可正常使用</td></tr>
+        <tr><td><code>HitTest</code>（Rendering）</td><td><strong>B2/T09 起真实</strong>：create 返回堆上包装句柄（原悬垂指针已修）、destroy 配对、query_point/query_rect 接通真实 HitTester、free_features 真实释放数组</td><td>创建/查询/释放全链可用；destroy 严格配对</td></tr>
+        <tr><td><code>RenderQueue / RenderTask</code>（Rendering）</td><td><strong>B2/T01+T02 起真实</strong>：RenderTask::Create 委托 BasicRenderTask 真实产出；push/pop/FIFO 全链真实；<strong>pop 改 TryDequeue(0) 空队列立即返 null（死锁已修）</strong>；execute 返 1/0、is_complete/cancel 空包装防护（UB 已修）；pop 返回新堆包装（调用方 Dispose）</td><td>队列/任务全链可用；pop 结果须 Dispose 配对</td></tr>
+        <tr><td><code>RenderOptimizer</code>（Rendering）</td><td><strong>五项全真实</strong>：cache 开关往返一致 + clear 清计数</td><td>可正常使用</td></tr>
+        <tr><td><code>RenderStats</code>（Rendering）</td><td>reset 真实清零 7 字段（结构往返）；累加侧无实名</td><td>仅 reset 口径</td></tr>
+        <tr><td><code>RenderException</code>（Rendering）</td><td>create 真实（_strdup 拷贝 message/layer）；<strong>B3/T13 起 destroy 真实释放</strong>（free _strdup 串 + delete 堆块——原 no-op 泄漏已修）；error_code 恒 0</td><td>字段经堆块直读；Create/Dispose 配对即可</td></tr>
+        <tr><td><code>OverlayComposite</code>（Rendering）</td><td>真实复合链（S-101 底层 → coverage 叠层）；NULL ds/coverage 或非正尺寸走 INVALID_PARAM 防护</td><td>端到端真实出图随内核 FlatBuffers adapter 装配（已知限制 #10）；本批防护断言</td></tr>
+        <tr><td><code>PortrayalResultAdvanced</code>（Rendering，内部）</td><td>新式 6 实测：retain/release 配对、encode_image PNG 产物、write_image_stream 分块回调非空</td><td>经 RenderHandle 内部路径使用</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout warn">
+      <span class="tt">native 缺口收敛（据实，closeout §5.1 #18–#20）</span>
+      ① <strong>#5</strong> HitTest 悬垂指针 —— <strong>已随 B2/T09 修复</strong>（create 堆包装 + 查询真实）；
+      ② <strong>#6</strong> RenderTask::Create 恒空 + Pop 死锁 + UB —— <strong>已随 B2/T01+T02 修复</strong>（任务工厂真实 + pop 非阻塞）；
+      ③ <strong>#7</strong> RenderException destroy no-op 泄漏 —— <strong>已随 B3/T13 修复</strong>（真实释放）；
+      ④ <strong>#4</strong> ChartViewer.Render 设备 ABI 错配 —— <strong>仍存</strong>（勿传非 NULL 设备，真实渲染链走本模块 PortrayalEngine.Render）。
     </div>
 
     <div class="footer">⑥ 渲染 · 返回 <a href="../eastarmap-sdk-net-index.html">手册索引</a></div>

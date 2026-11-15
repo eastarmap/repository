@@ -10,7 +10,7 @@
 <div class="layout">
 
   <aside class="sidebar">
-    <div class="brand">EastarMap.Chart SDK<br><small>.NET 二次开发手册 · v2.0.1</small></div>
+    <div class="brand">EastarMap.Chart SDK<br><small>.NET 二次开发手册 · v2.0.2</small></div>
     <nav>
       <div class="grp">总览</div>
       <a href="../eastarmap-sdk-net-index.html">📇 手册索引 / 快速开始</a>
@@ -20,12 +20,17 @@
       <a href="03-display.html">③ 显示配置 (Display)</a>
       <a href="04-error.html">④ 异常处理 (ErrorHandling)</a>
       <a href="05-extensibility.html">⑤ 扩展点 (Extensibility)</a>
-      <a href="06-rendering.html">⑥ 渲染 (Rendering)</a>
+      <a href="06-rendering.html">⑥ 渲染 (Rendering / Drawing / Imaging)</a>
       <a href="07-s57.html">⑦ S-57 解析 (S57)</a>
       <a href="08-security.html">⑧ 安全 (Security)</a>
       <a href="09-symbology.html" class="active">⑨ 符号化 (Symbology)</a>
       <div class="grp">配套</div>
-      <a href="10-end-to-end.html">⑩ 端到端完整示例</a>
+            <a href="11-navigation.html">⑩ 导航 (Navigation)</a>
+      <a href="12-alerts.html">⑪ 预警 (Alerts)</a>
+      <a href="13-ais.html">⑫ AIS 目标 (Ais)</a>
+      <a href="14-layers-viewing.html">⑬ 图层/视图/变换</a>
+      <a href="15-coverage-scope.html">⑭ 手册覆盖范围</a>
+      <a href="10-end-to-end.html">⑮ 端到端完整示例</a>
     </nav>
   </aside>
 
@@ -209,7 +214,7 @@ Console.WriteLine($<span class="st">"{font.Family} {font.Size}pt bold={font.IsBo
 
     <!-- ==================== Symbolizer / SymbolizerRule ==================== -->
     <h2 id="sym" class="anchor">Symbolizer（符号器）</h2>
-    <p>封装 <code>ogc_symbolizer_*</code>（create/destroy/type/style/symbolize）。<span class="tag idisposable">IDisposable</span></p>
+    <p>封装 <code>ogc_symbolizer_*</code>（create/destroy/type/style/get_style/symbolize）。<span class="tag idisposable">IDisposable</span></p>
 
     <div class="member">
       <div class="sig">public static Symbolizer Create(SymbolizerType type = SymbolizerType.Line)</div>
@@ -222,6 +227,10 @@ Console.WriteLine($<span class="st">"{font.Family} {font.Size}pt bold={font.IsBo
     <div class="member">
       <div class="sig">public void SetStyle(void* style)</div>
       <div class="desc">绑定绘制样式（draw_style 句柄指针直传）。</div>
+    </div>
+    <div class="member">
+      <div class="sig">public Drawing.DrawStyle GetStyle()</div>
+      <div class="desc">取当前样式（新建未 SetStyle 时返回内核默认样式副本；set→get 往返无泄漏）。</div>
     </div>
     <div class="member">
       <div class="sig">public int Symbolize(void* feature, void* device)</div>
@@ -258,6 +267,18 @@ Console.WriteLine($<span class="st">"{font.Family} {font.Size}pt bold={font.IsBo
     <div class="member">
       <div class="sig">public void AddSymbolizer(Symbolizer symbolizer)</div>
       <div class="desc">附加符号器。</div>
+    </div>
+    <div class="member">
+      <div class="sig">public void SetSymbolizer(Symbolizer symbolizer)</div>
+      <div class="desc">空规则时追加（与 <code>AddSymbolizer</code> 语义分立——不无界增长列表）。</div>
+    </div>
+    <div class="member">
+      <div class="sig">public void SetFilter(Query.Filter filter)</div>
+      <div class="desc">设置要素过滤（影响 <code>IsApplicable</code>）。</div>
+    </div>
+    <div class="member">
+      <div class="sig">public IntPtr GetFilter()</div>
+      <div class="desc">取过滤句柄（<code>IntPtr.Zero</code> = 无过滤）。</div>
     </div>
     <div class="member">
       <div class="sig">public IntPtr GetSymbolizer(int index)</div>

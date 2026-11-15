@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>⑭ 手册覆盖范围 — EastarMap.Chart SDK 手册</title>
+<link rel="stylesheet" href="../assets/eastarmap.css">
+</head>
+<body>
+<div class="layout">
+
+  <aside class="sidebar">
+    <div class="brand">EastarMap.Chart SDK<br><small>.NET 二次开发手册 · v2.0.2</small></div>
+    <nav>
+      <div class="grp">总览</div>
+      <a href="../eastarmap-sdk-net-index.html">📇 手册索引 / 快速开始</a>
+      <div class="grp">功能模块</div>
+      <a href="01-env-version.html">① 环境与版本 (Compatibility)</a>
+      <a href="02-data.html">② 数据入库与查询 (Data)</a>
+      <a href="03-display.html">③ 显示配置 (Display)</a>
+      <a href="04-error.html">④ 异常处理 (ErrorHandling)</a>
+      <a href="05-extensibility.html">⑤ 扩展点 (Extensibility)</a>
+      <a href="06-rendering.html">⑥ 渲染 (Rendering / Drawing / Imaging)</a>
+      <a href="07-s57.html">⑦ S-57 解析 (S57)</a>
+      <a href="08-security.html">⑧ 安全 (Security)</a>
+      <a href="09-symbology.html">⑨ 符号化 (Symbology)</a>
+      <div class="grp">配套</div>
+            <a href="11-navigation.html">⑩ 导航 (Navigation)</a>
+      <a href="12-alerts.html">⑪ 预警 (Alerts)</a>
+      <a href="13-ais.html">⑫ AIS 目标 (Ais)</a>
+      <a href="14-layers-viewing.html">⑬ 图层/视图/变换 (Layers/Viewer/Transform)</a>
+      <a href="15-coverage-scope.html" class="active">⑭ 手册覆盖范围</a>
+      <a href="10-end-to-end.html">⑮ 端到端完整示例</a>
+    </nav>
+  </aside>
+
+  <main class="main">
+    <div class="crumb"><a href="../eastarmap-sdk-net-index.html">手册索引</a> › ⑭ 手册覆盖范围</div>
+    <h1>⑭ 手册覆盖范围：已封装接口 vs 未封装接口</h1>
+
+    <p>本页界定本手册的<strong>覆盖边界</strong>，帮助二次开发快速判断某个能力是否可直接调用，
+    以及当能力「未封装」时应如何处理。是使用本手册各模块前的<strong>总纲</strong>。</p>
+
+    <div class="callout info">
+      <span class="tt">SDK 分层溯源链</span>
+      <code>ogc_chart_c_api</code>（C ABI，<code>ogc_*</code> 导出，931 个）
+      → <strong>L1</strong> <code>EastarMap.Chart.Interop</code>（P/Invoke 绑定，<strong>929 个</strong>，域 108——仅 JNI 2 项不属 .NET 范围未绑定）
+      → <strong>L2</strong> <code>EastarMap.Chart</code>（本手册对象，托管门面，<strong>929 个引用</strong>——v1.4 索引口径，2026-11-13 M6）
+      → 测试/示例（测试覆盖 73 项）。二次开发<strong>只应使用 L2 门面</strong>，禁止直接 P/Invoke（架构守卫强制）。
+    </div>
+
+    <h2 id="covered">已封装（本手册覆盖，二次开发可用）</h2>
+    <div class="callout warn">
+      <span class="tt">可用范围</span>
+      仅 <code>EastarMap.Chart</code>（L2 门面层，<strong>929 个</strong> native 引用）对应的托管类/方法，
+      按 <code>Compatibility / Data / Display / ErrorHandling / Extensibility / Geo / Geometry / Layers / Query /
+      Rendering / S57 / S101 / Security / Symbology / Transform / Viewer / Drawing / Imaging / Coverage /
+      Navigation / Alerts / Ais</code> 等命名空间划分，即本手册各模块所记录的全部内容。
+      这些门面类均实现 <code>IDisposable</code>（句柄安全释放），并统一以 <code>ChartSdkException</code> 暴露 native 错误。
+    </div>
+
+    <h2 id="not-covered">未封装（本手册<u>不</u>覆盖，二次开发<u>不可直接调用</u>）</h2>
+    <div class="callout danger">
+      <span class="tt">禁止直接 P/Invoke</span>
+      native <code>ogc_chart_c_api</code> 共 <strong>931</strong> 个 <code>ogc_*</code> 导出，当前 <strong>未封装 2 项（仅 JNI，B58 全量对账收口）</strong>：
+      <ul>
+        <li><strong>L1 未绑定 2 项</strong>：<code>ogc_jni_exception_create / ogc_jni_exception_destroy</code>（JNI 专用，不属 .NET 范围，永久排除）。</li>
+        <li>阶段五（B53–B59）已将离线 / 瓦片 / 缓存 / 熔断 / 错误恢复 / 优雅降级 / 性能 / 插件驱动 / 库加载 / LOD / 插件管理 / 健康检查 等 <strong>118 项</strong>补全为 L2 门面，未封装已收口至仅 JNI 2 项。</li>
+        <li>未封装项在 L2 无门面类，二次开发<strong>不得</strong>绕过封装直接 P/Invoke（架构守卫强制，且可能缺安全释放）。最终收口判据（B58）：未封装 = 2（仅 JNI）。</li>
+      </ul>
+    </div>
+
+    <h2 id="how-to-tell">边界判定方法</h2>
+    <div class="panel">
+      <p>判断某个能力是否已封装：在 <code>src\EastarMap.Chart\**</code> 中是否存在对应 <strong>public</strong> 门面类/方法。</p>
+      <table>
+        <thead><tr><th>判定</th><th>含义</th><th>处置</th></tr></thead>
+        <tbody>
+          <tr><td>存在 <strong>public</strong> 门面类/方法</td><td>已封装</td><td>见本手册对应模块直接使用；句柄用 <code>using</code> 释放。</td></tr>
+          <tr><td>不存在对应 public 门面</td><td>未封装</td><td>勿直接使用（勿绕过封装 P/Invoke）；仅在确实需要时向 SDK 提供方登记需求。</td></tr>
+          <tr><td>「仅部分封装」的域</td><td>门面存在但内核某子接口为 stub/限注</td><td>各模块内已按实况标注（如内核 stub 组、native 缺口、据实限注）。</td></tr>
+        </tbody>
+      </table>
+      <p>常见「仅部分封装」的域已在对应模块内标注：如 ⑥ 渲染的 native 缺口 #4（ChartViewer.Render 设备 ABI 错配）、⑩ 导航的 Track stub 组与 PositionManager/PositionProvider 模拟限注、⑪ 预警的 Alert.Type 跨型、⑫ AIS 的 AddTarget 所有权纪律等，均按内核实况限注据实标明。</p>
+    </div>
+
+    <h2 id="sub-layers">分层关系与所有权纪律</h2>
+    <div class="panel">
+      <ul>
+        <li><strong>L1（Interop）</strong>为 P/Invoke 原始绑定，仅供 L2 门面内部使用；二次开发不得直接触碰。</li>
+        <li><strong>L2（门面）</strong>是本手册对象：统一做 UTF-8 编解码、错误码→<code>ChartSdkException</code> 映射、句柄安全释放、双 TFM（net8.0 / net472）同构。</li>
+        <li><strong>所有权纪律</strong>：add 系（如 <code>Route.AddWaypoint</code>、<code>LayerManager.AddLayer</code>）吞引用转移所有权，调用方对象随即失效；get 系（如 <code>GetWaypoint</code>、<code>GetLayer</code>）借出视图，用完 Dispose 外壳即可。</li>
+      </ul>
+    </div>
+
+    <div class="footer">⑭ 手册覆盖范围 · 返回 <a href="../eastarmap-sdk-net-index.html">手册索引</a></div>
+  </main>
+</div>
+</body>
+</html>

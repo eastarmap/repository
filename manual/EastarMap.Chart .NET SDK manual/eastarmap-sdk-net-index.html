@@ -11,7 +11,7 @@
 
   <!-- ============ 侧边导航 ============ -->
   <aside class="sidebar">
-    <div class="brand">EastarMap.Chart SDK<br><small>.NET 二次开发手册 · v2.0.1</small></div>
+    <div class="brand">EastarMap.Chart SDK<br><small>.NET 二次开发手册 · v2.0.2</small></div>
     <nav>
       <div class="grp">总览</div>
       <a href="eastarmap-sdk-net-index.html" class="active">📇 手册索引 / 快速开始</a>
@@ -21,12 +21,17 @@
       <a href="modules/03-display.html">③ 显示配置 (Display)</a>
       <a href="modules/04-error.html">④ 异常处理 (ErrorHandling)</a>
       <a href="modules/05-extensibility.html">⑤ 扩展点 (Extensibility)</a>
-      <a href="modules/06-rendering.html">⑥ 渲染 (Rendering)</a>
+      <a href="modules/06-rendering.html">⑥ 渲染 (Rendering / Drawing / Imaging)</a>
       <a href="modules/07-s57.html">⑦ S-57 解析 (S57)</a>
       <a href="modules/08-security.html">⑧ 安全 (Security)</a>
       <a href="modules/09-symbology.html">⑨ 符号化 (Symbology)</a>
       <div class="grp">配套</div>
-      <a href="modules/10-end-to-end.html">⑩ 端到端完整示例</a>
+            <a href="modules/11-navigation.html">⑩ 导航 (Navigation)</a>
+      <a href="modules/12-alerts.html">⑪ 预警 (Alerts)</a>
+      <a href="modules/13-ais.html">⑫ AIS 目标 (Ais)</a>
+      <a href="modules/14-layers-viewing.html">⑬ 图层/视图/变换 (Layers/Viewer/Transform)</a>
+      <a href="modules/15-coverage-scope.html">⑭ 手册覆盖范围</a>
+      <a href="modules/10-end-to-end.html">⑮ 端到端完整示例</a>
     </nav>
   </aside>
 
@@ -43,29 +48,10 @@
 
     <div class="callout info">
       <span class="tt">SDK 分层溯源链</span>
-      <code>ogc_chart_c_api</code>（C ABI，<code>ogc_*</code> 导出，925 个）
-      → <strong>L1</strong> <code>EastarMap.Chart.Interop</code>（P/Invoke 绑定，230 个）
-      → <strong>L2</strong> <code>EastarMap.Chart</code>（本手册对象，托管门面，158 个引用）
-      → 测试/示例。二次开发<strong>只应使用 L2 门面</strong>，禁止直接 P/Invoke（架构守卫强制）。
-    </div>
-
-    <!-- ============ 已封装 vs 未封装边界 ============ -->
-    <h2 id="scope">本手册覆盖范围：已封装接口 vs 未封装接口</h2>
-    <div class="callout warn">
-      <span class="tt">已封装（本手册覆盖，二次开发可用）</span>
-      仅 <code>EastarMap.Chart</code>（L2 门面层，<strong>158 个</strong> native 引用）对应的托管类/方法，按 <code>Compatibility / Data / Display / ErrorHandling / Extensibility / Rendering / S57 / Security / Symbology</code> 九个命名空间划分，即本手册各模块所记录的全部内容。
-    </div>
-    <div class="callout danger">
-      <span class="tt">未封装（本手册<u>不</u>覆盖，二次开发<u>不可直接调用</u>）</span>
-      native <code>ogc_chart_c_api</code> 共 <strong>925</strong> 个 <code>ogc_*</code> 导出，其中 <strong>695 个尚未绑定</strong>（L1 未包装）——这些接口<strong>未封装</strong>，例如：
-      <ul>
-        <li>按域未封装：<code>ais / alert / alert_zone / cache_manager / chart_viewer / geometry / feature / envelope(部分) / coordinate / coord_transformer / datasource / draw_context / draw_device / filter / geo / image / hit_test / field_defn / field_value / chart_parser / chart_plugin / coverage / cpa / circuit_breaker / collision / driver_manager / error_recovery / graceful_degradation / health_check / plugin / …</code></li>
-        <li>这些域在 L2 无门面类，二次开发<strong>不得</strong>绕过封装直接 P/Invoke（架构守卫强制，且可能缺安全释放）。</li>
-      </ul>
-    </div>
-    <div class="callout info">
-      <span class="tt">边界判定方法</span>
-      判断某个能力是否已封装：在 <code>src\EastarMap.Chart\**</code> 中是否存在对应 <strong>public</strong> 门面类/方法。存在 = 已封装（见本手册）；不存在 = 未封装（待阶段二/三，勿直接使用）。常见"仅部分封装"的域已在对应模块内标注。
+      <code>ogc_chart_c_api</code>（C ABI，<code>ogc_*</code> 导出，931 个）
+      → <strong>L1</strong> <code>EastarMap.Chart.Interop</code>（P/Invoke 绑定，<strong>929 个</strong>，域 108——仅 JNI 2 项不属 .NET 范围未绑定）
+      → <strong>L2</strong> <code>EastarMap.Chart</code>（本手册对象，托管门面，<strong>929 个引用</strong>——v1.4 索引口径，2026-11-13 M6）
+      → 测试/示例（测试覆盖 73 项）。二次开发<strong>只应使用 L2 门面</strong>，禁止直接 P/Invoke（架构守卫强制）。
     </div>
 
     <!-- ============ 快速开始 ============ -->
@@ -73,14 +59,14 @@
     <div class="panel">
       <h3>1. 引用程序集与目标框架</h3>
       <ul>
-        <li>NuGet 包 <code>EastarMap.Chart</code>（版本 2.0.1-preview.21101），随包内置 <code>runtimes/win-x64/native/</code> 原生库。</li>
+        <li>NuGet 包 <code>EastarMap.Chart</code>（版本 <strong>2.0.2-preview.21109</strong>，依赖 <code>EastarMap.Chart.Interop 2.0.1.21101</code>），随包内置 <code>runtimes/win-x64/native/</code> 原生库。</li>
         <li>目标框架：<code>net8.0</code>（主，P/Invoke 走 <code>[LibraryImport]</code> 源生成）；<code>net472</code>（兜底，同清单 <code>[DllImport]</code>）。</li>
-        <li>命名空间按域划分：<code>EastarMap.Chart.Compatibility / Data / Display / ErrorHandling / Extensibility / Rendering / S57 / Security / Symbology</code>。</li>
+        <li>命名空间按域划分：<code>EastarMap.Chart.Compatibility / Data / Display / ErrorHandling / Extensibility / Geo / Geometry / Layers / Query / Rendering / S57 / S101 / Security / Symbology / Transform / Viewer / Drawing / Imaging / Coverage / Navigation / Alerts / Ais</code>。</li>
       </ul>
       <h3>2. native 库定位（重要前置）</h3>
       <p><code>NativeResolver</code> 按回退序解析 <code>ogc_chart_c_api</code>：
       <code>EASTARMAP_NATIVE_BIN</code> 环境变量 → 应用目录 → <code>install\bin</code> → PATH。
-      未解析时 L2 门面统一抛 <code>InvalidOperationException</code>（消息含探针明细）。</p>
+      未解析时 L2 门面统一抛 <code>ChartSdkException</code>（消息含探针明细）。</p>
       <h3>3. 最小可运行骨架</h3>
 <pre><code><span class="kw">using</span> EastarMap.Chart.Compatibility;
 <span class="kw">using</span> EastarMap.Chart.S57;
@@ -88,7 +74,7 @@
 
 <span class="kw">static void</span> <span class="fn">Main</span>()
 {
-    <span class="kw">var</span> version = SdkVersion.Version;          <span class="cm">// "2.0.1.21101"</span>
+    <span class="kw">var</span> version = SdkVersion.Version;          <span class="cm">// "2.0.2.21109"</span>
     <span class="kw">var</span> root    = EastarMapEnvironment.AppRoot;  <span class="cm">// native 树根</span>
     <span class="kw">var</span> engine  = PortrayalEngine.Create(<span class="kw">new</span> PortrayalEngineOptions { S52RootPath = root });
     <span class="kw">using</span> <span class="kw">var</span> parser = S57Parser.Create();
@@ -154,14 +140,18 @@
         </tr>
         <tr>
           <td><a href="modules/06-rendering.html">⑥</a></td>
-          <td>渲染<br><code>Rendering</code></td>
+          <td>渲染<br><code>Rendering / Drawing / Imaging</code></td>
           <td>
             ImageDevice（创建/缩放/清屏/取像素/混合/后端配置）、
             PortrayalEngine（ABI/能力位图/创建+授权双路径/图幅范围）、
-            渲染（Render→RenderOutput 像素+诊断+摘要）、
-            要素载入（LoadFeatures/FeatureResult 两段式枚举）。
+            渲染（Render→RenderOutput 像素+诊断+摘要；<strong>新式 6</strong>：retain/release、encode_image、write_image_stream）、
+            要素载入（LoadFeatures/FeatureResult 两段式枚举）、
+            <strong>绘制族（B49–B51）</strong>：DrawContext（begin/end+clear+style/clip B8/T35 真实）、DrawStyle（成员视图借出+set 值拷贝）、
+            DrawDevice（真实设备工厂）、DrawEngine（B5/T21 起真实）、SdkImage（缓冲可写 + PNG 落盘 + LoadFromFile 真实）、
+            LabelEngine/LabelInfo（B5/T22 起全真实）、HitTest（B2/T09 起真实）、RenderQueue/RenderTask（B2/T01+T02 起真实）、
+            RenderOptimizer（cache 开关往返）、RenderStats（reset 清零）、RenderException（B3/T13 起真实）、OverlayComposite（复合渲染）。
           </td>
-          <td><code>Rendering\ImageDevice.cs</code><br><code>Rendering\PortrayalEngine.cs</code></td>
+          <td><code>Rendering\ImageDevice.cs</code><br><code>Rendering\PortrayalEngine.cs</code><br><code>Rendering\*.cs</code>（B49–B51 十一门面）<br><code>Drawing\*.cs</code><br><code>Imaging\SdkImage.cs</code></td>
         </tr>
         <tr>
           <td><a href="modules/07-s57.html">⑦</a></td>
@@ -176,8 +166,8 @@
         <tr>
           <td><a href="modules/08-security.html">⑧</a></td>
           <td>安全<br><code>Security</code></td>
-          <td>DataEncryption（加密/解密，自增缓冲重试）、SecureLibraryLoader（安全加载器 + 信任库公钥读取 + 签名校验）。<br>
-            <span class="tag note">限注</span> DataEncryption/SecureLibraryLoader 均带 <strong>native 侧未实现</strong>限注（未 Initialize / stub），详见 <a href="modules/08-security.html">模块⑧</a>。</td>
+          <td>DataEncryption（加密/解密，自增缓冲重试）、SecureLibraryLoader（安全加载器 + 信任库公钥读取 + 签名校验）。
+            <br><span class="tag note">据实</span> DataEncryption/SecureLibraryLoader 均已随 B4/T17、B4/T18 收口为<strong>真实实现</strong>（非 stub），详见 <a href="modules/08-security.html">模块⑧</a>。</td>
           <td><code>Security\DataEncryption.cs</code><br><code>Security\SecureLibraryLoader.cs</code></td>
         </tr>
         <tr>
@@ -190,7 +180,54 @@
           <td><code>Symbology\Symbology.cs</code><br><code>Symbology\Symbolizer.cs</code></td>
         </tr>
         <tr>
-          <td><a href="modules/10-end-to-end.html">⑩</a></td>
+          <td><a href="modules/11-navigation.html">⑩</a></td>
+          <td>导航<br><code>Navigation</code></td>
+          <td>
+            Waypoint/Route（生命周期+航段计算+导入导出）、Track/TrackRecorder、RouteManager/RoutePlanner/RouteChecker、
+            NavigationEngine（状态机真实；四导航参数 B9/T38 起真实）、PositionManager（事件化样例）/PositionProvider、
+            NavCalc（CPA/UKC 纯函数）、CollisionAssessor（B9/T40 起真实）、NmeaParser（B9/T41 起真实）、OffCourseDetector（偏航全真实）。
+            所有权纪律：add 系吞引用转移、get 系借出视图；内核 stub 组速查表随页。
+          </td>
+          <td><code>Navigation\*.cs</code>（14 门面类）</td>
+        </tr>
+        <tr>
+          <td><a href="modules/12-alerts.html">⑪</a></td>
+          <td>预警<br><code>Alerts</code></td>
+          <td>
+            Alert 告警快照（八属性往返；X=经度 Y=纬度）、AlertEngine（登记/确认/移除真实链 + 触发链 B9/T42 起真实）、
+            AlertZone（GeoJSON 圆形/多边形区带，全真实——Point+radiusM / Polygon 单环，内/外点与边界距离）。
+          </td>
+          <td><code>Alerts\*.cs</code>（3 门面类）</td>
+        </tr>
+        <tr>
+          <td><a href="modules/13-ais.html">⑫</a></td>
+          <td>AIS 目标<br><code>Ais</code></td>
+          <td>
+            AisTarget（12 函数全真实：MMSI/船名/位置/速度/航向/艏向/航行状态 + update_position 直写 + 引用计数生命周期）、
+            AisManager（内核单例：initialize/shutdown/get 真实；注入与事件链 B9/T42 起真实）。
+          </td>
+          <td><code>Ais\*.cs</code>（2 门面类）</td>
+        </tr>
+        <tr>
+          <td><a href="modules/14-layers-viewing.html">⑬</a></td>
+          <td>图层 / 视图 / 变换<br><code>Layers / Viewer / Transform</code></td>
+          <td>
+            Layer/LayerGroup（生命周期+要素借出视图）、LayerManager（15 函数：AddLayer/RemoveLayer/可见性/透明度/Z 序/MoveLayer 补偿插入语义）、
+            ChartViewer（load_chart/render/viewport pan/zoom/query_feature/screen↔world——render 真实链随缺口 #4 归档限注）、
+            ChartParser/ChartPlugin/ChartException（零拷贝 in/ref）、
+            Viewport（pan/zoom 往返零误差）、TransformMatrix（乘法/求逆/应用矩阵）、TransformManager（B10/T43 起真实：set_viewport + get_matrix 3×3）、
+            CoordTransformer（CRS 工厂——EPSG:4326↔3857 手算互验 &lt;1e-6、inverse 往返、envelope/geometry 调用方拥有）。
+          </td>
+          <td><code>Layers\*.cs</code><br><code>Viewer\*.cs</code><br><code>Transform\*.cs</code></td>
+        </tr>
+        <tr>
+          <td><a href="modules/15-coverage-scope.html">⑭</a></td>
+          <td>手册覆盖范围<br><code>—</code></td>
+          <td>界定本手册覆盖边界：已封装（L2 门面）vs 未封装（仅 JNI 2 项）；分层溯源链、边界判定方法与所有权纪律总纲。</td>
+          <td>—</td>
+        </tr>
+        <tr>
+          <td><a href="modules/10-end-to-end.html">⑮</a></td>
           <td>端到端完整示例<br><code>—</code></td>
           <td>「解析 → dump → 查询 → EDB → 渲染 → 导出 PNG」全链路可运行示例，串联各模块。</td>
           <td><code>samples\EastarMap.Chart.ConsoleSmoke\Program.cs</code><br><code>samples\EastarMap.Chart.Demo.Wpf\**</code></td>
@@ -226,27 +263,37 @@
         <tr><td>构造颜色</td><td><code>SdkColor.FromRgb / FromRgba / FromHex</code></td><td>⑨</td></tr>
         <tr><td>画笔 / 画刷 / 字体</td><td><code>SdkPen / SdkBrush / SdkFont</code></td><td>⑨</td></tr>
         <tr><td>符号器与规则</td><td><code>Symbolizer / SymbolizerRule</code></td><td>⑨</td></tr>
+        <tr><td>图层登记 / 可见性 / 排序</td><td><code>LayerManager.AddLayer / SetLayerVisible / MoveLayer</code></td><td>⑬</td></tr>
+        <tr><td>图表查看 / 命中查询</td><td><code>ChartViewer.LoadChart / HasFeatureAt / ScreenToWorld</code></td><td>⑬</td></tr>
+        <tr><td>CRS 坐标变换</td><td><code>CoordTransformer.Create / Transform / TransformInverse</code></td><td>⑬</td></tr>
+        <tr><td>绘制画布 / 设备</td><td><code>DrawContext.Create(DrawDevice) / BeginDraw / Clear</code></td><td>⑥</td></tr>
+        <tr><td>图像创建 / PNG 落盘</td><td><code>SdkImage.Create / LoadFromFile / SaveToFile</code></td><td>⑥</td></tr>
+        <tr><td>渲染队列 / 任务</td><td><code>RenderQueue.Push / Pop / RenderTask.Execute</code>（B2/T01+T02 起真实）</td><td>⑥</td></tr>
+        <tr><td>渲染缓存优化</td><td><code>RenderOptimizer.SetCacheEnabled / IsCacheEnabled</code></td><td>⑥</td></tr>
+        <tr><td>复合叠加渲染</td><td><code>OverlayComposite.PortrayViewport</code>（NULL/尺寸防护；端到端真出图随内核 FlatBuffers adapter 装配——已知限制 #10）</td><td>⑥</td></tr>
       </tbody>
     </table>
 
     <h2 id="runtime">运行与部署要点</h2>
     <div class="panel">
       <ul>
-        <li><strong>native 测试环境</strong>：<code>install\bin</code>（118 文件，SHA 冻结于 <code>native\native-manifest.json</code>）。</li>
+        <li><strong>native 测试环境</strong>：<code>install\bin</code>（118 文件，SHA 冻结于 <code>native\native-manifest.json</code>；2026-11-13 外部重建 28 项 SHA 漂移，已据实裁定<strong>重建基线</strong>并 <code>verify_baseline.py --freeze</code> 复钉——第七门禁复绿，<code>verify_baseline</code> exit 0）。</li>
         <li><strong>S-57 样例图幅</strong>：<code>E:\CN422111.000</code>。</li>
         <li><strong>授权</strong>：引擎创建可传 <code>LicenseFilePath</code>（<code>config\license.lic</code>）或 <code>CredentialName</code>（凭据库），详见 ⑥。</li>
+        <li><strong>净机消费</strong>：本地源指向 <code>artifacts\</code> 后 <code>PackageReference</code> 引 <code>EastarMap.Chart 2.0.2-preview.21109</code>（依赖 Interop 2.0.1.21101 同源）；参考 <code>artifacts\smoke_b59\</code> 渲染演示（exit 0 + PNG 非空）。</li>
         <li><strong>常用验证命令</strong>：
 <pre><code>dotnet build EastarMap.Chart.sln -c Release
 dotnet test tests\EastarMap.Chart.ArchTests
-python tools\verify_baseline.py          <span class="cm"># 925 导出 + 118 native SHA 门禁</span>
-python tools\extract_exports.py --verify <span class="cm"># 基线 925 对账</span></code></pre>
+python tools\gen_api_index.py --check     <span class="cm"># L1 929 / L2 929 / 域 108 索引门禁</span>
+python tools\verify_baseline.py          <span class="cm"># 931 导出 + 118 native SHA 门禁</span>
+python tools\extract_exports.py --verify <span class="cm"># 基线 931 对账</span></code></pre>
         </li>
       </ul>
     </div>
 
     <div class="footer">
-      EastarMap.Chart .NET SDK 二次开发手册 · 由源码 <code>src\EastarMap.Chart\**</code> 自动梳理 ·
-      目标框架 net8.0 / net472 · 版本 2.0.1-preview.21101
+      EastarMap.Chart .NET SDK 二次开发手册 · 由源码 <code>src\EastarMap.Chart\**</code> 据实梳理（API 索引 v1.4 口径，2026-11-13）·
+      目标框架 net8.0 / net472 · 版本 2.0.2-preview.21109（依赖 Interop 2.0.1.21101）
     </div>
   </main>
 </div>

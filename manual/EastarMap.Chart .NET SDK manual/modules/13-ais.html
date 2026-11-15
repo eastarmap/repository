@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>⑫ AIS 目标 — EastarMap.Chart SDK 手册</title>
+<link rel="stylesheet" href="../assets/eastarmap.css">
+</head>
+<body>
+<div class="layout">
+
+  <aside class="sidebar">
+    <div class="brand">EastarMap.Chart SDK<br><small>.NET 二次开发手册 · v2.0.2</small></div>
+    <nav>
+      <div class="grp">总览</div>
+      <a href="../eastarmap-sdk-net-index.html">📇 手册索引 / 快速开始</a>
+      <div class="grp">功能模块</div>
+      <a href="01-env-version.html">① 环境与版本 (Compatibility)</a>
+      <a href="02-data.html">② 数据入库与查询 (Data)</a>
+      <a href="03-display.html">③ 显示配置 (Display)</a>
+      <a href="04-error.html">④ 异常处理 (ErrorHandling)</a>
+      <a href="05-extensibility.html">⑤ 扩展点 (Extensibility)</a>
+      <a href="06-rendering.html">⑥ 渲染 (Rendering / Drawing / Imaging)</a>
+      <a href="07-s57.html">⑦ S-57 解析 (S57)</a>
+      <a href="08-security.html">⑧ 安全 (Security)</a>
+      <a href="09-symbology.html">⑨ 符号化 (Symbology)</a>
+      <a href="11-navigation.html">⑩ 导航 (Navigation)</a>
+      <a href="12-alerts.html">⑪ 预警 (Alerts)</a>
+      <a href="13-ais.html" class="active">⑫ AIS 目标 (Ais)</a>
+      <div class="grp">配套</div>
+      <a href="14-layers-viewing.html">⑬ 图层/视图/变换</a>
+      <a href="15-coverage-scope.html">⑭ 手册覆盖范围</a>
+      <a href="10-end-to-end.html">⑮ 端到端完整示例</a>
+    </nav>
+  </aside>
+
+  <main class="main">
+    <div class="crumb"><a href="../eastarmap-sdk-net-index.html">手册索引</a> › ⑫ AIS 目标</div>
+    <h1>⑫ AIS 目标（命名空间 <code>EastarMap.Chart.Ais</code>）</h1>
+
+    <p>阶段三（M4）新增模块：<strong>AisTarget 全真实</strong>（目标对象引用计数生命周期 + 运动学字段直写直读）、
+    <strong>AisManager 内核单例</strong>（initialize/shutdown/get 真实；<strong>注入与事件链 B9/T42 起真实</strong>）。绑定
+    <code>ogc_ais_target_*（12）/ ogc_ais_manager_*（10）</code>。</p>
+
+    <table>
+      <thead><tr><th>类</th><th>职责</th><th>源文件</th></tr></thead>
+      <tbody>
+        <tr><td><a href="#target"><code>AisTarget</code></a></td><td>AIS 目标（12 函数，内核全真实）</td><td><code>Ais\AisTarget.cs</code></td></tr>
+        <tr><td><a href="#manager"><code>AisManager</code></a></td><td>目标管理器（内核单例；注入与事件链 B9/T42 起真实）</td><td><code>Ais\AisManager.cs</code></td></tr>
+      </tbody>
+    </table>
+
+    <h2 id="target" class="anchor">AisTarget（AIS 目标）</h2>
+    <div class="member">
+      <div class="sig">public static unsafe AisTarget Create(uint mmsi)（引用 1 归调用方）</div>
+      <div class="desc">创建目标；destroy = 内核 <code>ReleaseReference</code>（引用计数，非直接 delete）——Dispose 幂等配对。</div>
+    </div>
+    <div class="member">
+      <div class="sig">public uint Mmsi · string Name（缓冲拷贝读）· int NavStatus · double Heading</div>
+      <div class="desc">标识与状态族（内核真实）。<code>NavStatus</code> 为 AIS 航行状态枚举值（0–15）。</div>
+    </div>
+    <div class="member">
+      <div class="sig">public double Latitude/Longitude/Speed/Course · public void UpdatePosition(lat, lon, speed, course)</div>
+      <div class="desc">运动学四字段<strong>直写直读</strong>（内核 Set*/Get* 真实）。单位：度 / 节（内核字段语义，§15.9 单位注）。</div>
+    </div>
+
+    <h3>示例：目标创建 → 更新 → 读回 → 释放</h3>
+<pre><code><span class="kw">using</span> EastarMap.Chart.Ais;
+
+<span class="kw">var</span> target = AisTarget.Create(412345678u);
+<span class="kw">try</span>
+{
+    target.UpdatePosition(31.02, 120.02, speed: 12.5, course: 95.0);
+    Console.WriteLine($<span class="st">"MMSI {target.Mmsi} @ ({target.Latitude:F4}, {target.Longitude:F4}) "</span> +
+                      $<span class="st">"{target.Speed:F1}kn / {target.Course:F0}°"</span>);
+}
+<span class="kw">finally</span> { target.Dispose(); }   <span class="cm">// ReleaseReference 配对（幂等）</span></code></pre>
+
+    <h2 id="manager" class="anchor">AisManager（目标管理器）</h2>
+    <div class="member">
+      <div class="sig">public static unsafe AisManager Create()（<strong>内核单例</strong>——多门面对象共享同一表）</div>
+      <div class="desc">create = <code>AisManager::Instance()</code>、destroy 空操作——外壳 Dispose 幂等，不触内核。</div>
+    </div>
+    <div class="member">
+      <div class="sig">public int Initialize()（真实 1/0）· Shutdown()（真实）· int TargetCount（真实）· GetTarget(mmsi)（借出）</div>
+      <div class="desc">查询族真实；count/get_target 随 B9/T42 注入入口真实化（注入后 count 递增、get 可取回）。</div>
+    </div>
+    <div class="member">
+      <div class="sig">public unsafe int AddTarget(void* target) / int RemoveTarget(mmsi)（<strong>B9/T42 起真实</strong>）· SetCallback（B9/T42 起真消费）· FreeTargets（真实）</div>
+      <div class="desc"><strong>B9/T42 注入链收口</strong>：add_target = 内核 AddTarget（<strong>所有权转移</strong>，注入成功（返 0）后调用方不得再 destroy；同 MMSI 替换）、
+      remove_target = ReleaseReference + 摘表、set_callback 真消费（event_type 0=目标更新）、free_targets 真实 free 数组（目标对象归管理器）。</div>
+    </div>
+
+    <h3>所有权纪律速查（据实归档）</h3>
+    <table>
+      <thead><tr><th>接口</th><th>实况</th><th>处置</th></tr></thead>
+      <tbody>
+        <tr><td>AisManager.AddTarget</td><td>B9/T42 起真实：所有权转移（返 0 后调用方不得再 destroy；同 MMSI 替换）</td><td>注入后交由管理器统一释放</td></tr>
+        <tr><td>AisManager.RemoveTarget</td><td>B9/T42 起真实：ReleaseReference + 摘表</td><td>按 MMSI 正常移除</td></tr>
+        <tr><td>AisManager.SetCallback</td><td>B9/T42 起真消费（event_type 0=目标更新）</td><td>注册回调接收目标更新事件</td></tr>
+        <tr><td>AisManager.FreeTargets</td><td>真实：仅 free 数组（目标对象归管理器）</td><td>配合批读数组释放</td></tr>
+      </tbody>
+    </table>
+
+    <div class="footer">⑫ AIS 目标 · 返回 <a href="../eastarmap-sdk-net-index.html">手册索引</a></div>
+  </main>
+</div>
+</body>
+</html>

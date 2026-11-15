@@ -10,7 +10,7 @@
 <div class="layout">
 
   <aside class="sidebar">
-    <div class="brand">EastarMap.Chart SDK<br><small>.NET 二次开发手册 · v2.0.1</small></div>
+    <div class="brand">EastarMap.Chart SDK<br><small>.NET 二次开发手册 · v2.0.2</small></div>
     <nav>
       <div class="grp">总览</div>
       <a href="../eastarmap-sdk-net-index.html">📇 手册索引 / 快速开始</a>
@@ -20,12 +20,17 @@
       <a href="03-display.html">③ 显示配置 (Display)</a>
       <a href="04-error.html">④ 异常处理 (ErrorHandling)</a>
       <a href="05-extensibility.html">⑤ 扩展点 (Extensibility)</a>
-      <a href="06-rendering.html">⑥ 渲染 (Rendering)</a>
+      <a href="06-rendering.html">⑥ 渲染 (Rendering / Drawing / Imaging)</a>
       <a href="07-s57.html">⑦ S-57 解析 (S57)</a>
       <a href="08-security.html" class="active">⑧ 安全 (Security)</a>
       <a href="09-symbology.html">⑨ 符号化 (Symbology)</a>
       <div class="grp">配套</div>
-      <a href="10-end-to-end.html">⑩ 端到端完整示例</a>
+            <a href="11-navigation.html">⑩ 导航 (Navigation)</a>
+      <a href="12-alerts.html">⑪ 预警 (Alerts)</a>
+      <a href="13-ais.html">⑫ AIS 目标 (Ais)</a>
+      <a href="14-layers-viewing.html">⑬ 图层/视图/变换</a>
+      <a href="15-coverage-scope.html">⑭ 手册覆盖范围</a>
+      <a href="10-end-to-end.html">⑮ 端到端完整示例</a>
     </nav>
   </aside>
 
@@ -49,7 +54,7 @@
 
     <div class="member">
       <div class="sig">public static DataEncryption Create(string? key = null)</div>
-      <div class="desc">创建加密工具（key 当前由 native 忽略，保留契约位）。NULL 返回 → 确定性 <code>ChartSdkException</code>。</div>
+      <div class="desc">创建加密工具（key 非空时经 PBKDF2 派生密钥——确定性，同口令跨实例可解密）。NULL 返回 → 确定性 <code>ChartSdkException</code>。</div>
     </div>
     <div class="member">
       <div class="sig">public byte[] Encrypt(byte[] plaintext)</div>
@@ -66,11 +71,11 @@
       本门面按「自增缓冲重试」收敛（起始 = 明文长度 + 64，逐次翻倍，上限 64 MiB）。
     </p>
 
-    <div class="callout danger">
-      <span class="tt">native 限注（已归档）</span>
-      C API <code>ogc_data_encryption_create</code> 未调用 <code>DataEncryption::Initialize</code>，实现内 <code>m_initialized==false</code> →
-      <code>Encrypt/Decrypt</code> 恒返回空向量。当前真机往返对<strong>空串成立</strong>；非空串往返待 native 补 Initialize。
-      见源码 <code>DataEncryption.cs</code> 类注释的解除建议。
+    <div class="callout info">
+      <span class="tt">据实更新（B4/T17 收口）</span>
+      C API <code>ogc_data_encryption_create</code> 已即启用 <code>DataEncryption::Initialize</code>（原 create 忽略 password 且不初始化 → Encrypt/Decrypt 恒返空向量）；
+      password 非空时经 PBKDF2 派生 32B 活动密钥（盐取 password 字节循环填充 16B——确定性，同口令跨实例同密钥），
+      <strong>非空明文往返一致</strong>已入回归（<code>DataEncryptionTests.Encrypt_Decrypt_Roundtrip_NonEmpty_Plaintext_After_T17</code>）。
     </div>
 
     <h3>示例</h3>
@@ -87,7 +92,7 @@ Console.WriteLine(Encoding.UTF8.GetString(pt));   <span class="cm">// 敏感数�
 
     <div class="member">
       <div class="sig">public static SecureLibraryLoader Create(string allowedPaths)</div>
-      <div class="desc">创建安全加载器；<code>allowedPaths</code> 为允许路径白名单（分号分隔）。native 返回 NULL（stub）→ 抛 <code>ChartSdkException</code>（含 C 实名）。</div>
+      <div class="desc">创建安全加载器；<code>allowedPaths</code> 为允许路径白名单（分号分隔，前缀匹配、大小写不敏感）。native 返回 NULL → 抛 <code>ChartSdkException</code>。</div>
     </div>
     <div class="member">
       <div class="sig">public string AllowedPaths { get; }</div>
@@ -106,11 +111,12 @@ Console.WriteLine(Encoding.UTF8.GetString(pt));   <span class="cm">// 敏感数�
       <div class="desc">读取信任库（trust_store.json）内首个 license-signing 公钥 PEM（含换行；缺失返 null）。</div>
     </div>
 
-    <div class="callout danger">
-      <span class="tt">native 限注（已归档）</span>
-      C API 侧四函数当前均为 stub（<code>sdk_c_api_plugin.cpp:400-417</code>）：
-      <code>create</code> 恒返 NULL、<code>load</code> 恒返 NULL、<code>verify_signature</code> 恒返 -1。
-      「篡改必拒」安全语义成立，但「正样本通过」待 native 实现。见源码 <code>SecureLibraryLoader.cs</code> 类注释。
+    <div class="callout info">
+      <span class="tt">据实更新（B4/T18 收口）</span>
+      C API 侧四函数已<strong>真实实现</strong>：create 解析 allowed_paths 白名单（分号分隔前缀，归一化 + 大小写不敏感）；
+      load 白名单校验 + LoadLibraryW（wrapper 登记路径，destroy 统一 FreeLibrary）；verify_signature 键控内容摘要边车校验
+      （签名 = SHA-256(UTF8(public_key) ‖ 文件字节)，&lt;库文件&gt;.sig 原始 32 字节；匹配 0 / 摘要不符 -1 / 空参 -2 / 库不可读 -3 / 边车缺失 -4）。
+      「正样本通过 + 篡改必拒」双向安全语义已入回归（<code>SecureLibraryLoaderTests.Create_Load_Verify_Valid_And_Tampered_After_T18</code>）。
     </div>
 
     <h3>示例：读取信任库公钥 + 签名校验</h3>
@@ -124,9 +130,8 @@ Console.WriteLine(Encoding.UTF8.GetString(pt));   <span class="cm">// 敏感数�
     Console.WriteLine($<span class="st">"签名校验：{(ok ? "通过" : "拒绝")}（rc={rc}）"</span>);
 }
 
-<span class="cm">// create 目前为 stub → 会确定性抛 ChartSdkException</span>
-<span class="kw">try</span> { <span class="kw">using</span> <span class="kw">var</span> loader = SecureLibraryLoader.Create(<span class="st">@"C:\allowed"</span>); }
-<span class="kw">catch</span> (ChartSdkException ex) { Console.WriteLine(ex.Message); }</code></pre>
+<span class="cm">// create 解析白名单；签名校验双向（通过/拒绝）均可用</span>
+<span class="kw">using var</span> loader = SecureLibraryLoader.Create(<span class="st">@"C:\allowed"</span>);</code></pre>
 
     <div class="footer">⑧ 安全 · 返回 <a href="../eastarmap-sdk-net-index.html">手册索引</a></div>
   </main>
