@@ -3,9 +3,9 @@
 Nautical chart tools for **inland waterway navigation** and **marine route planning**. 
 Provides CLI access to ENC/S-57 electronic navigational charts with **navigation alert** capabilities.
 
-EastarMap 2.0.2.21109 Released
+EastarMap 2.0.x Released
 
-EastarMap_2.0.2.21109_win32_x64.exe is now available. This release brings significant updates across localized CLI configuration, next-generation S-100 chart support, measurement and alerting capabilities, route management, tile production, and the secondary-development ecosystem.
+EastarMap_2.0.x_win32_x64.exe is now available. This release brings significant updates across localized CLI configuration, next-generation S-100 chart support, measurement and alerting capabilities, route management, tile production, and the secondary-development ecosystem.
 
 ## Highlights
 
@@ -29,6 +29,34 @@ EastarMap_2.0.2.21109_win32_x64.exe is now available. This release brings signif
 
 ## Release page
 https://github.com/eastarmap/repository/releases
+
+EastarMap 2.0.x 正式发布
+
+EastarMap_2.0.x_win32_x64.exe 已发布。本次版本在 CLI 本地化配置、新一代 S-100 系列海图支持、量测与预警能力、航线管理、瓦片生产及二次开发生态方面均有重要更新。
+
+## 核心更新
+
+CLI 服务支持本地化配置使用，命令行工具可在本地环境中灵活配置运行。
+
+海图加载极速高效显示：支持 S-101、S-102、S-104、S-111、S-57 多标准海图数据加载与高性能渲染。
+
+量测功能：支持距离、面积、方位量测。
+
+预警能力：支持 8 类预警规则设置，并提供预警统计、预警导出与预警模拟功能。
+
+航线管理：支持航线的创建、编辑、导入与导出。
+
+瓦片工具链：支持 MBTiles 瓦片的创建、续裁、更新与浏览。
+
+示例与文档：补充示例数据 sample/data，支持 .NET SDK、Java SDK 二次开发。
+
+开发包发布：新增 npm 与 Python 发布包，便于多语言集成。
+
+Web 服务：支持瓦片服务 Web 浏览服务。
+
+## 发布页
+https://github.com/eastarmap/repository/releases
+
 
 # 东星海图导航预警系统产品说明
 
@@ -174,13 +202,6 @@ https://github.com/eastarmap/repository/releases
 
 二维码来源：https://github.com/eastarmap/eastarmap.github.io/blob/main/dist/qrcode/weixin-qrcode.png
 
-### 9.2 微信赞赏码
-
-扫码赞赏支持东星海图，鼓励我们持续完善航行安全辅助方案。
-
-<img src="https://github.com/eastarmap/eastarmap.github.io/blob/main/dist/qrcode/weixin%20reward.png?raw=true" alt="东星海图微信赞赏码" width="220">
-
-赞赏码来源：https://github.com/eastarmap/eastarmap.github.io/blob/main/dist/qrcode/weixin%20reward.png
 
 ## 10. 安全与合规说明
 
